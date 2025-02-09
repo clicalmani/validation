@@ -1,8 +1,8 @@
 <?php
 namespace Clicalmani\Validation;
 
+use Clcialmani\Validation\Exceptions\ValidationException;
 use Clicalmani\Providers\ValidationServiceProvider;
-use Clicalmani\Support\Facades\Log;
 
 class Validator implements ValidatorInterface
 {
@@ -227,33 +227,7 @@ class Validator implements ValidatorInterface
     {
         if ($this->silent) return;
         
-        $is_debug_mode = ( true === strtolower(env('APP_DEBUG')) );
-        
-        if ($is_debug_mode) throw new \Exception($message);
-
-        $backtrace = function(int $index) {
-            $trace = @ debug_backtrace()[$index];
-
-            if (!$trace) return false;
-
-            return ['class' => @ $trace['class'], 'line' => @ $trace['line']];
-        };
-
-        $index = 0;
-
-        while ($trace = $backtrace($index)) {
-            if (in_array($trace['class'], [
-                    __CLASS__, 
-                    \Clicalmani\Database\Factory\Entity::class, 
-                    \Clicalmani\Database\Factory\Models\AbstractModel::class,
-                    \Clicalmani\Database\Factory\Models\Model::class
-                ])) {
-                $index++;
-                continue;
-            }
-            
-            Log::error($message, E_ERROR, $trace['class'], $trace['line']);
-        }
+        throw new ValidationException($message);
     }
 
     public function __get($name)
