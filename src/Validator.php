@@ -2,7 +2,8 @@
 namespace Clicalmani\Validation;
 
 use Clcialmani\Validation\Exceptions\ValidationException;
-use Clicalmani\Providers\ValidationServiceProvider;
+use Clicalmani\Foundation\Http\Request;
+use Clicalmani\Foundation\Providers\ValidationServiceProvider;
 
 class Validator implements ValidatorInterface
 {
@@ -31,7 +32,7 @@ class Validator implements ValidatorInterface
     private $defaultArguments = ['required', 'nullable', 'sometimes'];
 
     /**
-     * 
+     * @var array
      */
     private $validated = [];
 
@@ -226,6 +227,10 @@ class Validator implements ValidatorInterface
     private function log(string $message)
     {
         if ($this->silent) return;
+
+        if (Request::currentRequest()->hasHeader('X-Inertia')) {
+            \Inertia\ComponentData::addError($this->parameter, $message);
+        }
         
         throw new ValidationException($message);
     }

@@ -17,6 +17,7 @@ class Kernel {
             \Clicalmani\Validation\Validators\DateValidator::class,
             \Clicalmani\Validation\Validators\EmailValidator::class,
             \Clicalmani\Validation\Validators\EnumValidator::class,
+            \Clicalmani\Validation\Validators\InValidator::class,
             \Clicalmani\Validation\Validators\FloatValidator::class,
             \Clicalmani\Validation\Validators\IDValidator::class,
             \Clicalmani\Validation\Validators\IntValidator::class,
