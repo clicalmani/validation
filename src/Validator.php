@@ -1,7 +1,7 @@
 <?php
 namespace Clicalmani\Validation;
 
-use Clcialmani\Validation\Exceptions\ValidationException;
+use Clicalmani\Validation\Exceptions\ValidationException;
 use Clicalmani\Foundation\Http\Request;
 use Clicalmani\Foundation\Providers\ValidationServiceProvider;
 

@@ -1,5 +1,5 @@
 <?php
-namespace Clcialmani\Validation\Exceptions;
+namespace Clicalmani\Validation\Exceptions;
 
 class ValidationException extends \Exception
 {
