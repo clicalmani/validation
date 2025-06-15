@@ -137,7 +137,7 @@ class Validator implements ValidatorInterface
                 $service = new ValidationServiceProvider;
                 
                 if (FALSE === $service->seemsValidator($argument)) $this->log("$argument is not a valid validator argument.");
-
+                
                 /**
                  * Provided options
                  * 

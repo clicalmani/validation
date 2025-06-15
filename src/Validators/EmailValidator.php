@@ -41,6 +41,10 @@ class EmailValidator extends Validator
                                     collection(explode('_', $model))
                                         ->map(fn(string $part) => ucfirst($part))->join('')
             ],
+            'attr' => [
+                'required' => false,
+                'type' => 'string'
+            ],
             'id' => [
                 'required' => false,
                 'type' => 'string'
@@ -54,11 +58,13 @@ class EmailValidator extends Validator
 
         if (NULL !== $model = @$options['unique']) {
             /** @var \Clicalmani\Database\Factory\Models\Model */
+            $model = "\\App\\Models\\$model";
             $instance = new $model;
             $primary_key = $instance?->getKey();
+            $parameter = isset($options['attr']) ? $options['attr']: $this->parameter;
             if (NULL !== $id = @$options['id']) {
-                $row = $model::where("$this->parameter = :email AND $primary_key <> :id", ['email' => $email, 'id' => $id])->first();
-            } else $row = $model::where("$this->parameter = :email", ['email' => $email])->first();
+                $row = $model::where("$parameter = :email AND $primary_key <> :id", ['email' => $email, 'id' => $id])->first();
+            } else $row = $model::where("$parameter = :email", ['email' => $email])->first();
 
             if (NULL !== $row) return false;
         }

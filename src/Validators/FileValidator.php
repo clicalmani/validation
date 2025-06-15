@@ -13,17 +13,26 @@ class FileValidator extends Validator
             'max' => [
                 'required' => false,
                 'type' => 'integer'
+            ],
+            'extension' => [
+                'required' => false,
+                'type' => 'array',
+                'function' => fn(string $ext) => explode(',', $ext)
             ]
         ];
     }
 
     public function validate(mixed &$value, ?array $options = [] ) : bool
     {
-        /** @var \Clicalmani\Http\Request */
-        $request = \Clicalmani\Http\Request::currentRequest();
+        $value = $this->parseArray($value);
+        
+        if ($value['error'] !== UPLOAD_ERR_OK) return false;
+        if (isset($options['max']) && $value['size'] > $options['max']) return false;
 
-        if ($request->file($this->parameter)?->isValid()) return true;
+        if (isset($options['extension'])) {
+            if (!in_array(pathinfo($value['name'], PATHINFO_EXTENSION), $options['extension'])) return false;
+        }
 
-        return false;
+        return true;
     }
 }

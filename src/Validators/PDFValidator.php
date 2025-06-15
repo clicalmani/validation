@@ -10,10 +10,10 @@ class PDFValidator extends FileValidator
         $is_file = parent::validate($value, $options);
 
         if (TRUE === $is_file) {
-            /** @var \Clicalmani\Http\Request */
-            $request = \Clicalmani\Http\Request::currentRequest();
+            /** @var \Clicalmani\Foundation\Http\Request */
+            $request = \Clicalmani\Foundation\Http\Request::currentRequest();
 
-            return 'pdf' === $request->file($this->parameter)->getClientOriginalExtension();
+            return 'pdf' === $request->file($this->parameter)->getClientExtension();
         }
 
         return false;
