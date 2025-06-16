@@ -11,7 +11,7 @@ class PDFValidator extends FileValidator
 
         if (TRUE === $is_file) {
             /** @var \Clicalmani\Foundation\Http\Request */
-            $request = \Clicalmani\Foundation\Http\Request::currentRequest();
+            $request = \Clicalmani\Foundation\Http\Request::current();
 
             return 'pdf' === $request->file($this->parameter)->getClientExtension();
         }

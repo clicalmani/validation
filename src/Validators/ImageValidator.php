@@ -11,7 +11,7 @@ class ImageValidator extends FileValidator
 
         if (TRUE === $is_file) {
             /** @var \Clicalmani\Http\Request */
-            $request = \Clicalmani\Http\Request::currentRequest();
+            $request = \Clicalmani\Http\Request::current();
             $file = $request->file($this->parameter);
 
             return in_array(
