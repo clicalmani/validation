@@ -2,6 +2,7 @@
 namespace Clicalmani\Validation;
 
 use Clicalmani\Validation\Exceptions\ValidationException;
+use Clicalmani\Foundation\Http\Request;
 use Clicalmani\Foundation\Providers\ValidationServiceProvider;
 
 class Validator implements ValidatorInterface
@@ -227,7 +228,7 @@ class Validator implements ValidatorInterface
     {
         if ($this->silent) return;
 
-        if (\Clicalmani\Foundation\Http\Request::current()->hasHeader('X-Inertia')) {
+        if (Request::current()->hasHeader('X-Inertia')) {
             \Inertia\ComponentData::addError($this->parameter, $message);
         }
         

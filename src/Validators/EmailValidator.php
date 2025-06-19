@@ -57,7 +57,7 @@ class EmailValidator extends Validator
         if (!$email) return false;
 
         if (NULL !== $model = @$options['unique']) {
-            /** @var \Clicalmani\Database\Factory\Models\Model */
+            /** @var \Clicalmani\Database\Factory\Models\Elegant */
             $model = "\\App\\Models\\$model";
             $instance = new $model;
             $primary_key = $instance?->getKey();
