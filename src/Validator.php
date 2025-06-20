@@ -137,7 +137,7 @@ class Validator implements ValidatorInterface
                 $service = new ValidationServiceProvider;
                 
                 if (FALSE === $service->seemsValidator($argument)) $this->log("$argument is not a valid validator argument.");
-                
+
                 /**
                  * Provided options
                  * 
@@ -228,7 +228,7 @@ class Validator implements ValidatorInterface
     {
         if ($this->silent) return;
 
-        if (Request::current()->hasHeader('X-Inertia')) {
+        if (Request::currentRequest()->hasHeader('X-Inertia')) {
             \Inertia\ComponentData::addError($this->parameter, $message);
         }
         

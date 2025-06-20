@@ -45,7 +45,7 @@ class IDValidator extends Validator
         if (!$value) return false;
         
         $this->model = trim("\\App\\Models\\" . $options['model']);
-        /** @var \Clicalmani\Database\Factory\Models\Elegant */
+        /** @var \Clicalmani\Database\Factory\Models\Model */
         $instance = $this->model::find($value);
         $this->primaryKey = @ $options['primary'] ? $options['primary']: $instance?->getKey();
         
