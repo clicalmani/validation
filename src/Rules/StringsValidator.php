@@ -1,11 +1,11 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Validation\Validator;
+use Clicalmani\Validation\Rule;
 
-class StringsValidator extends Validator
+class StringsValidator extends Rule
 {
-    protected string $argument = 'string[]';
+    protected static string $argument = 'string[]';
 
     public function options() : array
     {
@@ -25,19 +25,18 @@ class StringsValidator extends Validator
         ];
     }
 
-    public function validate(mixed &$value, ?array $options = []) : bool
+    public function validate(mixed &$value) : bool
     {
         if (is_string($value)) $value = explode(',', $value);
-        $value = $this->parseArray($value ?? []);
 
         foreach ($value as $index => $entry) {
 
-            if ( @ $options['length'] && strlen($entry) !== @ $options['length'] ) return false;
+            if ( @ $this->options['length'] && strlen($entry) !== @ $this->options['length'] ) return false;
         
-            if ( @ $options['min'] && strlen($entry) < @ $options['min'] ) return false;
+            if ( @ $this->options['min'] && strlen($entry) < @ $this->options['min'] ) return false;
 
-            if ( @ $options['max'] && strlen($entry) > @ $options['max'] ) {
-                $value[$index] = substr($entry, 0, $options['max']);
+            if ( @ $this->options['max'] && strlen($entry) > @ $this->options['max'] ) {
+                $value[$index] = substr($entry, 0, $this->options['max']);
             }
 
             if ( is_numeric($entry) ) return false;

@@ -1,24 +1,24 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
 class NumericValidator extends NumberValidator
 {
-    protected string $argument = 'numeric';
+    protected static string $argument = 'numeric';
     
     public function options() : array
     {
         return array_merge(parent::options(), ['length' => [
             'required' => false,
-            'type' => 'integer',
+            'type' => 'int',
             'validator' => fn($value) => !!intval($value)
         ]]);
     }
 
-    public function validate(mixed &$value, ?array $options = []) : bool
+    public function validate(mixed &$value) : bool
     {
-        if (FALSE === parent::validate($value, $options)) return false;
+        if (FALSE === parent::validate($value)) return false;
 
-        $length = @ $options['length'];
+        $length = @ $this->options['length'];
 
         if ($length && strlen($value) > $length) $value = substr($value, 0, $length);
 

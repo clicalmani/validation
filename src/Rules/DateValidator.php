@@ -1,11 +1,11 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Validation\Validator;
+use Clicalmani\Validation\Rule;
 
-class DateValidator extends Validator
+class DateValidator extends Rule
 {
-    protected string $argument = 'date';
+    protected static string $argument = 'date';
 
     public function options() : array
     {
@@ -18,10 +18,11 @@ class DateValidator extends Validator
         ];
     }
 
-    public function validate(mixed &$date, ?array $options = [] ) : bool
+    public function validate(mixed &$date) : bool
     {
-        $date = $this->parseString($date);
-        $format = $this->parseString($options['format']);
+        $format = $this->options['format'];
+        $this->cast($date, 'string');
+        $this->cast($format, 'string');
 
         $bindings = [
 			'Y' => '[0-9]{4}',

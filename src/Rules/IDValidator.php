@@ -1,24 +1,14 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Validation\Validator;
+use Clicalmani\Validation\Rule;
 
-class IDValidator extends Validator
+class IDValidator extends Rule
 {
-    protected string $argument = 'id';
+    protected static string $argument = 'id';
 
-    /**
-     * ID model
-     * 
-     * @var string
-     */
     protected string $model;
 
-    /**
-     * Model primary key
-     * 
-     * @var string|string[]
-     */
     protected $primaryKey;
 
     public function options() : array
@@ -40,14 +30,14 @@ class IDValidator extends Validator
         ];
     }
 
-    public function validate(mixed &$value, ?array $options = []) : bool
+    public function validate(mixed &$value) : bool
     {
         if (!$value) return false;
         
-        $this->model = trim("\\App\\Models\\" . $options['model']);
+        $this->model = trim("\\App\\Models\\" . $this->options['model']);
         /** @var \Clicalmani\Database\Factory\Models\Model */
         $instance = $this->model::find($value);
-        $this->primaryKey = @ $options['primary'] ? $options['primary']: $instance?->getKey();
+        $this->primaryKey = @ $this->options['primary'] ? $this->options['primary']: $instance?->getKey();
         
         if ( class_exists($this->model) && $this->primaryKey ) {
             

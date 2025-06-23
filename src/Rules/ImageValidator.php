@@ -1,17 +1,17 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
 class ImageValidator extends FileValidator
 {
-    protected string $argument = 'image';
+    protected static string $argument = 'image';
 
-    public function validate(mixed &$value, ?array $options = [] ) : bool
+    public function validate(mixed &$value ) : bool
     {
-        $is_file = parent::validate($value, $options);
+        $is_file = parent::validate($value);
 
         if (TRUE === $is_file) {
             /** @var \Clicalmani\Http\Request */
-            $request = \Clicalmani\Http\Request::currentRequest();
+            $request = \Clicalmani\Foundation\Http\Request::current();
             $file = $request->file($this->parameter);
 
             return in_array(

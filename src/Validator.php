@@ -1,247 +1,128 @@
 <?php
 namespace Clicalmani\Validation;
 
-use Clicalmani\Validation\Exceptions\ValidationException;
-use Clicalmani\Foundation\Http\Request;
 use Clicalmani\Foundation\Providers\ValidationServiceProvider;
 
-class Validator implements ValidatorInterface
+class Validator
 {
-    use InputParser;
-    use ParseValidator;
+    const ERROR_WARNING = 0;
+    const ERROR_SILENCE = 1;
+    const ERROR_THROW = 2;
 
-    /**
-     * Holds the validator signature.
-     * 
-     * @var string
-     */
-    protected string $signature;
+    private static ?int $error_level = null;
+
+    public function __construct(int $error_level = self::ERROR_THROW)
+    {
+        static::$error_level = $error_level;
+    }
     
-    /**
-     * Validator argument
-     * 
-     * @var string
-     */
-    protected string $argument;
-
-    /**
-     * Default validation arguments
-     * 
-     * @var string[]
-     */
-    private $defaultArguments = ['required', 'nullable', 'sometimes'];
-
-    /**
-     * @var array
-     */
-    private $validated = [];
-
-    public function __construct(private ?bool $silent = false, protected ?string $parameter = null) {}
-    
-    public function validate(mixed &$value, ?array $options = [] ) : bool
-    {
-        $this->log("Must override %s::%s in %s at line %d.", __CLASS__, __METHOD__, $this::class, __LINE__);
-
-        return true;
-    }
-
-    public function options() : array
-    {
-        return [
-            // Options
-        ];
-    }
-
-    /**
-     * Argument getter
-     * 
-     * @return string
-     */
-    public function getArgument() : string
-    {
-        return $this->argument;
-    }
-
-    /**
-     * Input value is required
-     * 
-     * @return bool
-     */
-    public function isRequired() : bool
-    {
-        if ( -1 !== $this->getArguments()->index('required') ) return true;
-        return false;
-    }
-
-    /**
-     * Input value is nullable
-     * 
-     * @return bool
-     */
-    public function isNullable() : bool
-    {
-        if ( -1 !== $this->getArguments()->index('nullable') ) return true;
-        return false;
-    }
-
-    /**
-     * Input value is sometimes required
-     * 
-     * @return bool
-     */
-    public function isSometimes() : bool
-    {
-        if (-1 !== $this->getArguments()->index('sometimes')) return true;
-        return false;
-    }
-
     /**
      * Sanitize input
      * 
      * @param array &$inputs
-     * @param array $signatures
+     * @param array $patterns
      * @return bool
      */
-    public function sanitize(array &$inputs, array $signatures) : bool
+    public function sanitize(array &$inputs, array $patterns) : bool
     {
-        foreach ($signatures as $param => $sig) {
+        foreach ($patterns as $param => $pattern) {
             
-            if ( in_array($param, $this->validated) ) continue;
+            if (NULL === $rule = $this->getRule($pattern, $param)) continue;
             
-            $this->signature = $sig;
-            
-            if ( $this->isRequired() ) {
-                if ( ! array_key_exists($param, $inputs) ) {
-                    if ( FALSE === $this->isSometimes() ) $this->log("Parameter $param is required.");
+            if ( array_key_exists($param, $inputs) ) {
+                
+                if ( $rule->isNullable() && $inputs[$param] == '' ) {
+                    $inputs[$param] = null;
+                    continue;
+                }
+
+                if ($argument = $rule->getArgument()) {
+                    if (FALSE === ValidationServiceProvider::seemsValidator($argument)) {
+                        $rule->log(sprintf("%s is not a valid validator rule argument; expected a valid validator rule argument, got %s", $argument, $argument));
+                    }
+
+                    if ($rule->checkOptions()) {
+                        $value = $inputs[$param];
+                        $success = $rule->validate($value);
+                        
+                        if ( false === $success ) {
+                            $rule->log(sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $argument, json_encode($value)));
+                        }
+
+                        $inputs[$param] = $value;
+                    }
+                }
+            } else {
+                if ( $rule->isRequired() ) {
+                    if ( FALSE === $rule->isSometimes() ) {
+                        $rule->log(sprintf("Parameter %s is required for %s validation rule, while using %s validation pattern.", $param, self::getArgument($pattern), $pattern));
+                    }
                     else {
                         $inputs[$param] = null;
                         continue;
                     }
                 }
             }
-            
-            if ( array_key_exists($param, $inputs) ) {
-                
-                if ( $this->isNullable() && $inputs[$param] == '' ) {
-                    $inputs[$param] = null;
-                    continue;
-                }
-
-                /**
-                 * Validator argument
-                 * 
-                 * @var string
-                 */ 
-                $argument = $this->getArguments()->filter(fn(string $argument) => ! in_array($argument, $this->defaultArguments))->first();
-                
-                $service = new ValidationServiceProvider;
-                
-                if (FALSE === $service->seemsValidator($argument)) $this->log("$argument is not a valid validator argument.");
-
-                /**
-                 * Provided options
-                 * 
-                 * @var array
-                 */
-                $options = $this->getArgumentOptions($argument);
-                
-                /**
-                 * Validator
-                 * 
-                 * @var static
-                 */
-                $validatorClass = ( new ValidationServiceProvider )->getValidator($argument);
-                
-                $validator = new $validatorClass(parameter: $param);
-
-                /**
-                 * Validator options
-                 * 
-                 * @var array
-                 */
-                $voptions = $validator->options();
-                
-                // Check validator options validity.
-                foreach ($voptions as $option => $data) {
-
-                    if ( !array_key_exists($option, $options) ) continue;
-                    
-                    // A required option not provided
-                    if ( @ $data['required'] && ! array_key_exists($option, $options) ) $this->log(sprintf("Option %s is required for %s validator.", $option, $argument));
-                    
-                    // Execute option function
-                    if ( $fn = @ $data['function'] ) $options[$option] = $fn($options[$option]);
-
-                    // Set option type
-                    if ( @ $data['type'] ) settype($options[$option], $data['type']);
-
-                    // Set array key (for array options)
-                    if ( @ $data['keys'] ) {
-                        
-                        $keys = $data['keys'];
-                        $tmp = [];
-
-                        foreach ($keys as $i => $key) {
-                            $tmp[$key] = @ $options[$option][$i];
-                        }
-
-                        $options[$option] = $tmp;
-                    }
-                    
-                    // Option validator
-                    if ( !!@$options[$option] && $fn = @ $data['validator'] AND false === $fn($options[$option]) ) $this->log(sprintf("%s is not a valid option %s value for %s validator.", $options[$option], $option, $argument)); 
-                }
-                
-                foreach ($options as $option => $value) {
-                    if ( $option && ! array_key_exists($option, $voptions) ) $this->log(sprintf("%s is not a valid %s validator option.", $option, $argument));
-                }
-
-                $value = $inputs[$param];
-                $success = $validator->validate($value, $options);
-                
-                if ( false === $success ) {
-                    if ( FALSE === $this->silent ) $this->log(sprintf("Parameter %s is not valid.", $param));
-
-                    return false;
-                }
-
-                $inputs[$param] = $value;
-                $this->passed($param);
-            }
         }
 
         return true;
     }
 
-    /**
-     * Keep track of parameters which validator passed.
-     * 
-     * @param string $param
-     * @return void
-     */
-    public function passed(string $param) : void
+    public static function getArguments(string $pattern)
     {
-        $this->validated[] = $param;
+        return collection( explode('|', $pattern) )
+                ->filter(fn(string $argument) => preg_match('/^[0-9a-z\[\]-_]+$/', $argument));
     }
 
-    private function log(string $message)
+    public static function getArgument(string $pattern) : ?string
     {
-        if ($this->silent) return;
+        return self::getArguments($pattern)
+                ->filter(fn(string $argument) => ! in_array($argument, Rule::getDefaultArguments()))
+                ->first();
+    }
 
-        if (Request::currentRequest()->hasHeader('X-Inertia')) {
-            \Inertia\ComponentData::addError($this->parameter, $message);
-        }
+    public static function getArgumentOptions(string $pattern, ?string $argument = null) : array
+    {
+        $argument = $argument ?: self::getArgument($pattern);
         
-        throw new ValidationException($message);
+        if ($argument) {
+            $options = collection( explode('|', $pattern) )
+                            ->filter(fn(string $arg) => ! in_array($arg, array_merge(Rule::getDefaultArguments(), [$argument])))
+                            ->map(function(string $option) {
+                                if ($pos = strpos($option, ':')) {
+                                    $opt = substr($option, 0, $pos);
+                                    $value = substr($option, $pos + 1);
+                                    return [$opt, $value];
+                                }
+                                
+                                return [$option, null];
+                            });
+            
+            $ret = [];
+
+            foreach ($options as $option) {
+                $ret[$option[0]] = $option[1];
+            }
+            
+            return $ret;
+        }
+
+        return [];
     }
 
-    public function __get($name)
+    public function getRule(string $pattern, string $param) : ?RuleInterface
     {
-        if ($name === 'signature') return $this->signature;
+        $ruleClass = ValidationServiceProvider::getValidator(self::getArgument($pattern));
+        return $ruleClass ? new $ruleClass(parameter: $param, pattern: $pattern) : null;
     }
 
-    public function __set($name, $value)
+    public static function setErrorLevel(int $error_level = self::ERROR_THROW) : void
     {
-        if ($name === 'signature') $this->signature = $value;
+        static::$error_level = $error_level;
+    }
+
+    public static function getErrorLevel() : int
+    {
+        return static::$error_level;
     }
 }

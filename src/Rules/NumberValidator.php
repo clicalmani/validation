@@ -1,11 +1,11 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Validation\Validator;
+use Clicalmani\Validation\Rule;
 
-class NumberValidator extends Validator
+class NumberValidator extends Rule
 {
-    protected string $argument = 'number';
+    protected static string $argument = 'number';
 
     public function options() : array
     {
@@ -26,16 +26,16 @@ class NumberValidator extends Validator
         ];
     }
 
-    public function validate(mixed &$value, ?array $options = []) : bool
+    public function validate(mixed &$value) : bool
     {
-        $value = $this->parseInt($value);
+        $this->cast($value, 'int');
 
-        if ( @ $options['min'] && $value < @ $options['min'] ) $value = $options['min'];
+        if ( @ $this->options['min'] && $value < @ $this->options['min'] ) $value = $this->options['min'];
 
-        if ( @ $options['max'] && $value > @ $options['max'] ) $value = $options['max'];
+        if ( @ $this->options['max'] && $value > @ $this->options['max'] ) $value = $this->options['max'];
 
-        if ( @ $options['range'] ) {
-            @[$min, $max] = explode('-', $options['range']);
+        if ( @ $this->options['range'] ) {
+            @[$min, $max] = explode('-', $this->options['range']);
             if ( $value < $min || $value > $max ) return false;
         }
 
