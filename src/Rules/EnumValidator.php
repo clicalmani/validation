@@ -12,7 +12,8 @@ class EnumValidator extends Rule
         return [
             'list' => [
                 'required' => true,
-                'type' => 'array'
+                'type' => 'array',
+                'function' => fn(string $value) => explode(',', $value)
             ]
         ];
     }
@@ -20,7 +21,7 @@ class EnumValidator extends Rule
     public function validate(mixed &$value) : bool
     {
         $list = $this->options['list'];
-
+        
         $this->cast($value, 'string');
         $this->cast($list, 'array');
         

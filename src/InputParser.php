@@ -142,10 +142,10 @@ class InputParser
      * Cast
      * 
      * @param string $type
-     * @param mixed &$value
+     * @param mixed $value
      * @return mixed
      */
-    public function cast(mixed &$value, string $type) : mixed
+    public function cast(mixed $value, string $type) : mixed
     {
         return match($type) {
             'string' => $value = $this->parseString($value),

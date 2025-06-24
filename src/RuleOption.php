@@ -23,10 +23,7 @@ class RuleOption implements RuleOptionInterface
         if (!!$this->is_required && !$this->value) {
             throw new ValidationException(sprintf("Option %s is required for %s rule.", $this->name));
         }
-
-        if ($this->type) {
-            (new InputParser())->cast($this->value, $this->type);
-        }
+        
         if ($this->func && $this->func instanceof \Closure) {
             $this->value = $this->func->call($this, $this->value);
         }
@@ -34,7 +31,11 @@ class RuleOption implements RuleOptionInterface
         if ($this->validator && FALSE == call($this->validator, $this->value)) {
             throw new ValidationException("$this->value is not a valid option $this->name value for %s rule.");
         }
-
+        
+        if ($this->type) {
+            $this->value = (new InputParser())->cast($this->value, $this->type);
+        }
+        
         if ($this->keys) {
             $result = [];
 

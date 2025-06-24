@@ -118,7 +118,7 @@ class Rule extends InputParser implements RuleInterface
                 }
             }
         }
-
+        
         Validator::setErrorLevel($old_error_level);
 
         return true;
