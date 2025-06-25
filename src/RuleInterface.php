@@ -23,7 +23,7 @@ interface RuleInterface
      * 
      * @return string
      */
-    public function getErrorMessage() : ?string;
+    public function message() : ?string;
 
     /**
      * Input value is required

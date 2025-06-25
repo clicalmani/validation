@@ -61,7 +61,7 @@ class Rule extends InputParser implements RuleInterface
      * 
      * @return string
      */
-    public function getErrorMessage() : ?string
+    public function message() : ?string
     {
         return null;
     }
@@ -126,17 +126,17 @@ class Rule extends InputParser implements RuleInterface
 
     public function log(?string $message = null) : void
     {
-        $message = $this->getErrorMessage() ?: $message;
+        $message = $this->message() ?: $message;
 
         if (\Clicalmani\Foundation\Http\Request::current()?->hasHeader('X-Inertia')) {
-                \Inertia\ComponentData::addError($this->parameter, $message);
-                Log::error($message, E_ERROR, self::class, __LINE__);
-            } else {
-                switch (Validator::getErrorLevel()) {
-                    case Validator::ERROR_SILENCE: ; break;
-                    case Validator::ERROR_WARNING: Log::warning($message, self::class, __LINE__); break;
-                    case Validator::ERROR_THROW: throw new ValidationException($message); break;
-                }
+            \Inertia\ComponentData::addError($this->parameter, $message);
+            Log::error($message, E_ERROR, self::class, __LINE__);
+        } else {
+            switch (Validator::getErrorLevel()) {
+                case Validator::ERROR_SILENCE: ; break;
+                case Validator::ERROR_WARNING: Log::warning($message, self::class, __LINE__); break;
+                case Validator::ERROR_THROW: throw new ValidationException($message); break;
             }
+        }
     }
 }
