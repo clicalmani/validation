@@ -9,7 +9,7 @@ class NumericValidator extends NumberValidator
     {
         return array_merge(parent::options(), ['length' => [
             'required' => false,
-            'type' => 'int',
+            'type' => 'integer',
             'validator' => fn($value) => !!intval($value)
         ]]);
     }

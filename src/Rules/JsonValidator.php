@@ -10,7 +10,7 @@ class JsonValidator extends Rule
     public function options() : array
     {
         return [
-            'associative' => [
+            'assoc' => [
                 'required' => false,
                 'type' => 'boolean'
             ],
@@ -25,9 +25,7 @@ class JsonValidator extends Rule
     {
         $this->cast($value, 'string');
         
-        if ( @ $this->options['translate'] ) $value = strtr($value, $this->options['translate']['from'], $this->options['translate']['to']);
-        
-        $value = json_decode($value, @$this->options['associative'], @$this->options['depth'] ?? 512);
+        $value = json_decode($value, @$this->options['assoc'], @$this->options['depth'] ?? 512);
         
         if ( JSON_ERROR_NONE !== json_last_error() ) return false;
 

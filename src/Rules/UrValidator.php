@@ -3,9 +3,9 @@ namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
 
-class UriValidator extends Rule
+class UrlValidator extends Rule
 {
-    protected static string $argument = 'uri';
+    protected static string $argument = 'url';
 
     public function validate(mixed &$value) : bool
     {

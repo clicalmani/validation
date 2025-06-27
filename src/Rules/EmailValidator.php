@@ -1,5 +1,5 @@
 <?php
-namespace Clicalmani\Validation\Rules;
+namespace Clicalmani\Validation\Validators;
 
 use Clicalmani\Validation\Rule;
 
@@ -14,17 +14,36 @@ use Clicalmani\Validation\Rule;
  */
 class EmailValidator extends Rule
 {
-    protected static string $argument = 'email';
+    /**
+     * Validator argument
+     * 
+     * @var string
+     */
+    protected string $argument = 'email';
 
+    /**
+     * Options for the email validator
+     * 
+     * This method returns an array of options that can be used to
+     * configure the email validation process. The options include
+     * the format of the email, which is required and must be a string.
+     * A custom validator is also provided to check the format.
+     * 
+     * @return array
+     */
     public function options() : array
     {
         return [
             'unique' => [
                 'required' => false,
                 'type' => 'string',
-                'validator' => fn(string $model) => fn(string $model) => 
+                'function' => fn(string $model) => fn(string $model) => 
                                     collection(explode('_', $model))
                                         ->map(fn(string $part) => ucfirst($part))->join('')
+            ],
+            'attr' => [
+                'required' => false,
+                'type' => 'string'
             ],
             'id' => [
                 'required' => false,
@@ -35,21 +54,21 @@ class EmailValidator extends Rule
     
     public function validate(mixed &$email) : bool
     {
-        $this->cast($email, 'string');
-        
         if (!$email) return false;
 
         if (NULL !== $model = @$this->options['unique']) {
-            /** @var \Clicalmani\Database\Factory\Models\Model */
+            /** @var \Clicalmani\Database\Factory\Models\Elegant */
+            $model = "\\App\\Models\\$model";
             $instance = new $model;
             $primary_key = $instance?->getKey();
+            $parameter = isset($this->options['attr']) ? $this->options['attr']: $this->parameter;
             if (NULL !== $id = @$this->options['id']) {
-                $row = $model::where("$this->parameter = :email AND $primary_key <> :id", ['email' => $email, 'id' => $id])->first();
-            } else $row = $model::where("$this->parameter = :email", ['email' => $email])->first();
+                $row = $model::where("$parameter = :email AND $primary_key <> :id", ['email' => $email, 'id' => $id])->first();
+            } else $row = $model::where("$parameter = :email", ['email' => $email])->first();
 
             if (NULL !== $row) return false;
         }
 
-        return !! filter_var($email, FILTER_VALIDATE_EMAIL);
+        return !! filter_var($this->parseString($email), FILTER_VALIDATE_EMAIL);
     }
 }
