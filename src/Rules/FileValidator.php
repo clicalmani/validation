@@ -12,18 +12,27 @@ class FileValidator extends Rule
         return [
             'max' => [
                 'required' => false,
-                'type' => 'int'
+                'type' => 'integer'
+            ],
+            'ext' => [
+                'required' => false,
+                'type' => 'array',
+                'function' => fn(string $ext) => explode(',', $ext)
             ]
         ];
     }
 
-    public function validate(mixed &$value ) : bool
+    public function validate(mixed &$value) : bool
     {
-        /** @var \Clicalmani\Http\Request */
-        $request = \Clicalmani\Foundation\Http\Request::current();
+        $value = $this->parseArray($value);
+        
+        if ($value['error'] !== UPLOAD_ERR_OK) return false;
+        if (isset($this->options['max']) && $value['size'] > $this->options['max']) return false;
 
-        if ($request->file($this->parameter)?->isValid()) return true;
+        if (isset($this->options['ext'])) {
+            if (!in_array(pathinfo($value['name'], PATHINFO_EXTENSION), $this->options['ext'])) return false;
+        }
 
-        return false;
+        return true;
     }
 }

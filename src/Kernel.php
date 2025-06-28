@@ -38,6 +38,9 @@ class Kernel {
             \Clicalmani\Validation\Rules\FileValidator::class,
             \Clicalmani\Validation\Rules\ImageValidator::class,
             \Clicalmani\Validation\Rules\PDFValidator::class,
+            \Clicalmani\Validation\Rules\AlphaValidator::class,
+            \Clicalmani\Validation\Rules\NumValidator::class,
+            \Clicalmani\Validation\Rules\NotInValidator::class,
         ];
     }
 };

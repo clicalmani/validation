@@ -1,5 +1,5 @@
 <?php
-namespace Clicalmani\Validation\Validators;
+namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
 
@@ -19,7 +19,7 @@ class EmailValidator extends Rule
      * 
      * @var string
      */
-    protected string $argument = 'email';
+    protected static string $argument = 'email';
 
     /**
      * Options for the email validator

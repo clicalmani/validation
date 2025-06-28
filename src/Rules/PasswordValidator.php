@@ -8,7 +8,7 @@ class PasswordValidator extends StringValidator
     public function options() : array
     {
         $this->options = parent::options();
-        $this->options['confirm'] = [
+        $this->options['confirmed'] = [
             'required' => false,
             'type' => 'bool'
         ];
@@ -22,7 +22,7 @@ class PasswordValidator extends StringValidator
 
     public function validate(mixed &$value) : bool
     {
-        $this->cast($value, 'string');
+        $value = $this->parseString($value);
 
         if ( @ $this->options['length'] && strlen($value) !== @ $this->options['length'] ) return false;
         
@@ -32,7 +32,7 @@ class PasswordValidator extends StringValidator
             $value = substr($value, 0, $this->options['max']);
         }
 
-        if ( @$this->options['confirm'] && $value != request("{$this->parameter}_confirm")) return false;
+        if ( @$this->options['confirmed'] && $value != request("{$this->parameter}_confirmation")) return false;
 
         if ( @$this->options['hash']) $value = password($value);
 

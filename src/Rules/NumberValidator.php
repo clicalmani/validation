@@ -28,7 +28,7 @@ class NumberValidator extends Rule
 
     public function validate(mixed &$value) : bool
     {
-        $this->cast($value, 'int');
+        if (!preg_match('/[0-9\.]+/', $value)) return false;
 
         if ( @ $this->options['min'] && $value < @ $this->options['min'] ) $value = $this->options['min'];
 

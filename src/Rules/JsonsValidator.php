@@ -9,7 +9,7 @@ class JsonsValidator extends JsonValidator
     {
         $this->cast($value, 'string');
 
-        $value = json_decode($value, @$this->options['associative'], @$this->options['depth'] ?? 512);
+        $value = json_decode($value, @$this->options['assoc'], @$this->options['depth'] ?? 512);
         
         if ( JSON_ERROR_NONE !== json_last_error() OR !is_iterable($value) ) return false;
 

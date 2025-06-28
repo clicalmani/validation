@@ -5,7 +5,7 @@ class ImageValidator extends FileValidator
 {
     protected static string $argument = 'image';
 
-    public function validate(mixed &$value ) : bool
+    public function validate(mixed &$value) : bool
     {
         $is_file = parent::validate($value);
 
