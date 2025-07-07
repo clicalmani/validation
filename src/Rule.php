@@ -1,8 +1,10 @@
 <?php
 namespace Clicalmani\Validation;
 
+use Clicalmani\Foundation\Http\Request;
 use Clicalmani\Foundation\Support\Facades\Log;
 use Clicalmani\Validation\Exceptions\ValidationException;
+use Inertia\Response;
 
 class Rule extends InputParser implements RuleInterface
 {
@@ -130,7 +132,7 @@ class Rule extends InputParser implements RuleInterface
 
         if (\Clicalmani\Foundation\Http\Request::current()?->hasHeader('X-Inertia')) {
             \Inertia\ComponentData::addError($this->parameter, $message);
-            Log::error($message, E_ERROR, self::class, __LINE__);
+            die(back());
         } else {
             switch (Validator::getErrorLevel()) {
                 case Validator::ERROR_SILENCE: ; break;

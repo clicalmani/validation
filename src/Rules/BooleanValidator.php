@@ -9,7 +9,7 @@ class BooleanValidator extends Rule
     
     public function validate(mixed &$value) : bool
     {
-        $this->cast($value, 'int');
+        $this->cast((int)$value, 'int');
         if ($value) $value = true;
         if (NULL === $value || (is_numeric($value) && $value === 0)) $value = false;
         

@@ -47,7 +47,7 @@ class Validator
                         
                         if ( false === $success ) {
                             $rule->log(sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $argument, json_encode($value)));
-                        }
+                        } else session("errors.$param")->remove();
 
                         $inputs[$param] = $value;
                     }

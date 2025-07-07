@@ -37,9 +37,10 @@ class EmailValidator extends Rule
             'unique' => [
                 'required' => false,
                 'type' => 'string',
-                'function' => fn(string $model) => fn(string $model) => 
+                'function' => fn(string $model) => 
                                     collection(explode('_', $model))
-                                        ->map(fn(string $part) => ucfirst($part))->join('')
+                                        ->map(fn(string $part) => ucfirst($part))
+                                        ->join('')
             ],
             'attr' => [
                 'required' => false,
