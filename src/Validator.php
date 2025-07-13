@@ -1,6 +1,7 @@
 <?php
 namespace Clicalmani\Validation;
 
+use Clicalmani\Foundation\Http\Request;
 use Clicalmani\Foundation\Providers\ValidationServiceProvider;
 
 class Validator
@@ -43,11 +44,13 @@ class Validator
 
                     if ($rule->checkOptions()) {
                         $value = $inputs[$param];
-                        $success = $rule->validate($value);
                         
-                        if ( false === $success ) {
+                        if (!$rule->validate($value)) {
                             $rule->log(sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $argument, json_encode($value)));
-                        } else session("errors.$param")->remove();
+                            return false;
+                        } elseif (Request::current()?->hasHeader('X-Inertia')) {
+                            session("errors.$param")->remove();
+                        }
 
                         $inputs[$param] = $value;
                     }
