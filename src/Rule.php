@@ -85,7 +85,7 @@ class Rule extends InputParser implements RuleInterface
 
     private function hasArgument(string $argument) : bool
     {
-        return -1 !== Validator::getArguments($this->pattern)->index($argument);
+        return Validator::getArguments($this->pattern)->contains($argument);
     }
 
     public function checkOptions() : bool

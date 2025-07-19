@@ -23,8 +23,12 @@ class JsonValidator extends Rule
 
     public function validate(mixed &$value) : bool
     {
-        $this->cast($value, 'string');
-        
+        if (is_string($value)) {
+            $value = $this->cast($value, 'string');
+        } else {
+            $value = json_encode($value, JSON_THROW_ON_ERROR);
+        }
+
         $value = json_decode($value, @$this->options['assoc'], @$this->options['depth'] ?? 512);
         
         if ( JSON_ERROR_NONE !== json_last_error() ) return false;

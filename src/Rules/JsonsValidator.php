@@ -7,14 +7,10 @@ class JsonsValidator extends JsonValidator
 
     public function validate(mixed &$value) : bool
     {
-        $this->cast($value, 'string');
+        $value = $this->cast($value, 'array');
 
-        $value = json_decode($value, @$this->options['assoc'], @$this->options['depth'] ?? 512);
-        
-        if ( JSON_ERROR_NONE !== json_last_error() OR !is_iterable($value) ) return false;
-
-        foreach ($value as $obj) {
-            if (FALSE === parent::validate($value)) return false;
+        foreach ($value as $data) {
+            if (FALSE === parent::validate($data)) return false;
         }
 
         return true;
