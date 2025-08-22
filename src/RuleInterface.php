@@ -47,6 +47,20 @@ interface RuleInterface
     public function isSometimes() : bool;
 
     /**
+     * Input value is hash
+     * 
+     * @return bool
+     */
+    public function isHash() : bool;
+
+    /**
+     * Input value is confirmed
+     * 
+     * @return bool
+     */
+    public function isConfirmed() : bool;
+
+    /**
      * Check rule options
      * 
      * @return bool

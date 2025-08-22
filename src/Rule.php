@@ -22,7 +22,7 @@ class Rule extends InputParser implements RuleInterface
      * 
      * @var string[]
      */
-    const DEFAULT_ARGUMENTS = ['required', 'nullable', 'sometimes'];
+    const DEFAULT_ARGUMENTS = ['required', 'nullable', 'sometimes', 'hash', 'confirmed'];
 
     public function __construct(protected ?string $parameter = null, protected string $pattern = '')
     {
@@ -81,6 +81,16 @@ class Rule extends InputParser implements RuleInterface
     public function isSometimes() : bool
     {
         return $this->hasArgument('sometimes');
+    }
+
+    public function isHash() : bool
+    {
+        return $this->hasArgument('hash');
+    }
+
+    public function isConfirmed() : bool
+    {
+        return $this->hasArgument('confirmed');
     }
 
     private function hasArgument(string $argument) : bool

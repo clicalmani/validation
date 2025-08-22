@@ -37,6 +37,20 @@ class Validator
                     continue;
                 }
 
+                if ($rule->isHash() && is_string($inputs[$param])) {
+                    $inputs[$param] = password(trim($inputs[$param]));
+                    continue;
+                }
+
+                if ($rule->isConfirmed()) {
+                    $confirmed_param = $param . '_confirmation';
+                    if (!array_key_exists($confirmed_param, $inputs) || $inputs[$param] !== $inputs[$confirmed_param]) {
+                        $rule->log(sprintf("Parameter %s confirmation does not match; expected a matching value for %s confirmation, got %s", $confirmed_param, $param, json_encode($inputs[$confirmed_param] ?? null)));
+                        return false;
+                    }
+                    unset($inputs[$confirmed_param]);
+                }
+
                 if ($argument = $rule->getArgument()) {
                     if (FALSE === ValidationServiceProvider::seemsValidator($argument)) {
                         $rule->log(sprintf("%s is not a valid validator rule argument; expected a valid validator rule argument, got %s", $argument, $argument));
