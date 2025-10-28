@@ -21,7 +21,6 @@ class DateTimeValidator extends Rule
     public function validate(mixed &$date) : bool
     {
         $format = $this->options['format'];
-        $this->cast($date, 'string');
         $this->cast($format, 'string');
 
         $bindings = [
