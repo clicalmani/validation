@@ -33,7 +33,7 @@ class IDValidator extends Rule
     public function validate(mixed &$value) : bool
     {
         if (!$value) return false;
-        
+        console_log($this->options);
         $this->model = trim("\\App\\Models\\" . $this->options['model']);
         /** @var \Clicalmani\Database\Factory\Models\Model */
         $instance = $this->model::find($value);

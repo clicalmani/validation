@@ -21,7 +21,7 @@ class IDsValidator extends IDValidator
     public function validate(mixed &$ids) : bool
     {
         if (is_string($ids)) $ids = explode(',', $ids);
-            
+        
         foreach ($ids as $id) {
             if (false == parent::validate($id)) return false;
         }

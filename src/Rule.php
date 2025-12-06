@@ -1,10 +1,8 @@
 <?php
 namespace Clicalmani\Validation;
 
-use Clicalmani\Foundation\Http\Request;
 use Clicalmani\Foundation\Support\Facades\Log;
 use Clicalmani\Validation\Exceptions\ValidationException;
-use Inertia\Response;
 
 class Rule extends InputParser implements RuleInterface
 {
