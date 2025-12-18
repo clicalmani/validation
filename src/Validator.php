@@ -11,6 +11,7 @@ class Validator
     const ERROR_THROW = 2;
 
     private static ?int $error_level = null;
+    private static array $passed = [];
 
     public function __construct(int $error_level = self::ERROR_THROW)
     {
@@ -28,7 +29,7 @@ class Validator
     {
         foreach ($patterns as $param => $pattern) {
             
-            if (NULL === $rule = $this->getRule($pattern, $param)) continue;
+            if (in_array($param, static::$passed) || NULL === $rule = $this->getRule($pattern, $param)) continue;
             
             if ( array_key_exists($param, $inputs) ) {
                 
@@ -63,6 +64,7 @@ class Validator
                             $rule->log(sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $argument, json_encode($value)));
                             return false;
                         } elseif (Request::current()?->hasHeader('X-Inertia')) {
+                            static::$passed[] = $param;
                             session("errors.$param")->remove();
                         }
 
@@ -141,5 +143,10 @@ class Validator
     public static function getErrorLevel() : int
     {
         return static::$error_level;
+    }
+
+    public static function passed(string $parameter) : void
+    {
+        static::$passed[] = $parameter;
     }
 }

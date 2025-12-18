@@ -12,7 +12,7 @@ class FileValidator extends Rule
         return [
             'max' => [
                 'required' => false,
-                'type' => 'integer'
+                'type' => 'int'
             ],
             'ext' => [
                 'required' => false,

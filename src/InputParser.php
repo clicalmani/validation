@@ -150,8 +150,10 @@ class InputParser
         return match($type) {
             'string' => $value = $this->parseString($value),
             'int' => $value = $this->parseInt($value),
+            'integer' => $value = $this->parseInt($value),
             'float' => $value = $this->parseFloat($value),
             'bool' => $value = $this->parseBoolean($value),
+            'boolean' => $value = $this->parseBoolean($value),
             'array' => $value = $this->parseArray($value),
             'object' => $value = $this->parseObject($value)
         };

@@ -12,7 +12,7 @@ class JsonValidator extends Rule
         return [
             'assoc' => [
                 'required' => false,
-                'type' => 'boolean'
+                'type' => 'bool'
             ],
             'depth' => [
                 'required' => false,
