@@ -33,7 +33,7 @@ class Validator
             
             if ( array_key_exists($param, $inputs) ) {
                 
-                if ( $rule->isNullable() && $inputs[$param] == '' ) {
+                if ( $rule->isNullable() && strlen(trim($inputs[$param])) == 0 ) {
                     $inputs[$param] = null;
                     continue;
                 }
