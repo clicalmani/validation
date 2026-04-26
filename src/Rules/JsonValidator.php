@@ -7,6 +7,8 @@ class JsonValidator extends Rule
 {
     protected static string $argument = 'json';
 
+    private string $error_message = '';
+
     public function options() : array
     {
         return [
@@ -23,16 +25,23 @@ class JsonValidator extends Rule
 
     public function validate(mixed &$value) : bool
     {
-        if (is_string($value)) {
-            $value = $this->cast($value, 'string');
-        } else {
-            $value = json_encode($value, JSON_THROW_ON_ERROR);
+        if ( !is_string($value) ) {
+            $this->error_message = "The {$this->parameter} must be a string.";
+            return false;
         }
 
         $value = json_decode($value, @$this->options['assoc'], @$this->options['depth'] ?? 512);
         
-        if ( JSON_ERROR_NONE !== json_last_error() ) return false;
+        if ( JSON_ERROR_NONE !== json_last_error() ) {
+            $this->error_message = "The {$this->parameter} must be a valid JSON string.";
+            return false;
+        }
 
         return true;
+    }
+
+    public function message() : string
+    {
+        return $this->error_message ?: "The {$this->parameter} must be a valid JSON string.";
     }
 }
