@@ -1,111 +1,235 @@
-<?php 
-namespace Clicalmani\Routing;
+<?php
+namespace Clicalmani\Validation;
 
-/**
- * Validator Class
- * 
- * @package clicalmani/routing 
- * @author @clicalmani
- */
-class Validator implements Factory\ValidatorInterface
+use Clicalmani\Foundation\Http\Request;
+use Clicalmani\Foundation\Providers\ValidationServiceProvider;
+
+class Validator
 {
-    use ValidationRules;
+    const ERROR_WARNING = 0;
+    const ERROR_SILENCE = 1;
+    const ERROR_THROW = 2;
+
+    private static ?int $error_level = null;
+    private static array $passed = [];
+    private static array $errors = [];
+
+    private array $validatedInputs = [];
+
+    public function __construct(int $error_level = self::ERROR_THROW)
+    {
+        static::$error_level = $error_level;
+    }
     
     /**
-     * Controller
+     * Sanitize input
      * 
-     * @param \Clicalmani\Routing\Route $route
+     * @param array &$inputs
+     * @param array $patterns
+     * @return bool
      */
-    public function __construct(private Route $route) 
+    public function sanitize(array &$inputs, array $patterns) : bool
     {
-        /**
-         * Validate global patterns
-         */
-        foreach (Memory::getGlobalPatterns() as $param => $pattern) {
-            /** @var \Clicalmani\Routing\Segment */
-            foreach ($this->route as $segment) {
-                if ($segment->getName() === $param) {
-                    $segment->setValidator(new SegmentValidator($param, 'regexp|pattern:' . $pattern));
+        foreach ($patterns as $param => $pattern) {
+            
+            if (in_array($param, static::$passed) || NULL === $rule = $this->getRule($pattern, $param)) continue;
+            
+            if ( array_key_exists($param, $inputs) ) {
+                
+                if ( $rule->isNullable() ) {
+
+                    if ( is_string($inputs[$param]) && strlen(trim($inputs[$param])) == 0 ) {
+                        $inputs[$param] = null;
+                        continue;
+                    }
+                    
+                    continue;
+                }
+
+                if ($rule->isHash() && is_string($inputs[$param])) {
+                    $inputs[$param] = password(trim($inputs[$param]));
+                    continue;
+                }
+
+                if ($rule->isConfirmed()) {
+                    $confirmed_param = $param . '_confirmation';
+                    if (!array_key_exists($confirmed_param, $inputs) || $inputs[$param] !== $inputs[$confirmed_param]) {
+                        $rule->log(sprintf("Parameter %s confirmation does not match; expected a matching value for %s confirmation, got %s", $confirmed_param, $param, json_encode($inputs[$confirmed_param] ?? null)));
+                        return false;
+                    }
+                    unset($inputs[$confirmed_param]);
+                }
+
+                if ($argument = $rule->getArgument()) {
+                    if (FALSE === ValidationServiceProvider::seemsValidator($argument)) {
+                        $rule->log(sprintf("%s is not a valid validator rule argument; expected a valid validator rule argument, got %s", $argument, $argument));
+                    }
+
+                    if ($rule->checkOptions()) {
+                        $value = $inputs[$param];
+                        
+                        if (!$rule->validate($value)) {
+                            $rule->log(sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $argument, json_encode($value)));
+                            return false;
+                        } elseif (Request::current()?->hasHeader('X-Inertia')) {
+                            static::$passed[] = $param;
+                            session("errors.$param")->remove();
+                        }
+
+                        $inputs[$param] = $value;
+                    }
+                }
+            } else {
+                if ( $rule->isRequired() ) {
+                    if ( FALSE === $rule->isSometimes() ) {
+                        $rule->log(sprintf("Parameter %s is required for %s validation rule, while using %s validation pattern.", $param, self::getArgument($pattern), $pattern));
+                    }
+                    else {
+                        $inputs[$param] = null;
+                        continue;
+                    }
                 }
             }
         }
+
+        return true;
     }
 
-    /**
-     * @override Getter
-     */
-    public function __get(mixed $parameter)
+    public static function getArguments(string $pattern)
     {
-        switch ($parameter) {
-            case 'route': return $this->route;
-        }
+        return collection( explode('|', $pattern) )
+                ->filter(fn(string $argument) => preg_match('/^[0-9a-z\[\]-_]+$/', $argument));
     }
 
-    /**
-     * @override Setter
-     */
-    public function __set(mixed $parameter, mixed $value)
+    public static function getArgument(string $pattern) : ?string
     {
-        switch ($parameter) {
-            case 'route': $this->route = $value; break;
-        }
+        return self::getArguments($pattern)
+                ->filter(fn(string $argument) => ! in_array($argument, Rule::getDefaultArguments()))
+                ->first();
     }
 
-    public function bind() : void
+    public static function getArgumentOptions(string $pattern, ?string $argument = null) : array
     {
-        Memory::addRoute($this->route);
-    }
-
-    /**
-     * Revalidate a parameter
-     * 
-     * @param string $param
-     * @param string $pattern
-     * @return void
-     */
-    private function revalidateParam(string $param, string $pattern) : void
-    {
-        /** @var \Clicalmani\Routing\Segment */
-        foreach ($this->route as $segment) {
-            if ($segment->getName() === $param) $segment->setValidator(new SegmentValidator($param, $pattern));
-        }
-    }
-
-    public function where(string|array $params, string $uri) : self
-    {
-        $params = (array)$params;
-
-        foreach ($params as $param) $this->revalidateParam($param, $uri);
+        $argument = $argument ?: self::getArgument($pattern);
         
-        return $this;
+        if ($argument) {
+            $options = collection( explode('|', $pattern) )
+                            ->filter(fn(string $arg) => ! in_array($arg, array_merge(Rule::getDefaultArguments(), [$argument])))
+                            ->map(function(string $option) {
+                                if ($pos = strpos($option, ':')) {
+                                    $opt = substr($option, 0, $pos);
+                                    $value = substr($option, $pos + 1);
+                                    return [$opt, $value];
+                                }
+                                
+                                return [$option, null];
+                            });
+            
+            $ret = [];
+
+            foreach ($options as $option) {
+                $ret[$option[0]] = $option[1];
+            }
+            
+            return $ret;
+        }
+
+        return [];
     }
 
-    public function middleware(string|array $name_or_class) : self
+    public function getRule(string $pattern, string $param) : ?RuleInterface
     {
-        $name_or_class = (array) $name_or_class;
-
-        foreach ($name_or_class as $name) $this->route->addMiddleware($name);
-
-        return $this;
+        $ruleClass = ValidationServiceProvider::getValidator(self::getArgument($pattern));
+        return $ruleClass ? new $ruleClass(parameter: $param, pattern: $pattern) : null;
     }
 
     /**
-     * Define route name
-     * 
-     * @param string $name
-     * @return void
+     * Factory — crée et exécute une validation sur les inputs de la requête courante.
+     *
+     * @param  array $signatures  ['param' => 'rule|option:value|...']
+     * @param  array $inputs      Données à valider (Request courant par défaut)
+     * @param  int   $error_level Niveau d'erreur à appliquer
+     * @return self
      */
-    public function name(string $name) : void
+    public static function make(
+        array $signatures,
+        array $inputs = [],
+        int   $error_level = self::ERROR_THROW
+    ): self 
     {
-        $this->route->name = $name;
-
-        if ($this->route->isDoubled()) {
-
-            $this->route->name = ''; // Undo renaming
-
-            throw new \Exception(
-                sprintf("There is an existing route with the same name %s.", $name)
-            );
+        $instance = new self($error_level);
+        static::$passed = [];
+        
+        if (empty($inputs)) {
+            $inputs = Request::current()?->all() ?? [];
         }
+
+        if (false === $instance->sanitize($inputs, $signatures)) {
+            return $instance;
+        }
+
+        $instance->validatedInputs = $inputs;
+
+        return $instance;
+    }
+
+    /**
+     * Enregistre une erreur pour un paramètre donné.
+     * Appelé par Rule::log() pour centraliser la collecte.
+     *
+     * @param string  $parameter  Nom du paramètre concerné
+     * @param string  $message    Message d'erreur
+     */
+    public static function addError(string $parameter, string $message): void
+    {
+        static::$errors[$parameter][] = $message;
+    }
+
+    /**
+     * Retourne toutes les erreurs de validation collectées.
+     *
+     * @param  string|null $parameter  Filtre sur un paramètre précis (optionnel)
+     * @return array  ['param' => ['message', ...], ...]
+     */
+    public static function errors(?string $parameter = null): array
+    {
+        if ($parameter !== null) {
+            return static::$errors[$parameter] ?? [];
+        }
+
+        return static::$errors;
+    }
+
+    /**
+     * @return bool  True si au moins une erreur a été collectée
+     */
+    public static function hasErrors(): bool
+    {
+        return !empty(static::$errors);
+    }
+
+    /**
+     * Retourne les inputs après assainissement.
+     * 
+     * @return array
+     */
+    public function validated(): array
+    {
+        return $this->validatedInputs ?? [];
+    }
+
+    public static function setErrorLevel(int $error_level = self::ERROR_THROW) : void
+    {
+        static::$error_level = $error_level;
+    }
+
+    public static function getErrorLevel() : int
+    {
+        return static::$error_level;
+    }
+
+    public static function passed(string $parameter) : void
+    {
+        static::$passed[] = $parameter;
     }
 }
