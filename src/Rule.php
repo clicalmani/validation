@@ -114,11 +114,12 @@ class Rule extends InputParser implements RuleInterface
                 $option = new RuleOption(
                     $key, 
                     $this->options[$key],
-                    @ $value['required'],
-                    @ $value['type'],
-                    @ $value['keys'] ?? [],
-                    @ $value['function'],
-                    @ $value['validator']
+                    $value['required'] ?? null,
+                    $value['type'] ?? null,
+                    $value['keys'] ?? [],
+                    $value['function'] ?? null,
+                    $value['validator'] ?? null,
+                    $value['default'] ?? null
                 );
                 
                 try {

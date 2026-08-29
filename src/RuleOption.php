@@ -10,9 +10,10 @@ class RuleOption implements RuleOptionInterface
         private mixed &$value,
         private ?bool $is_required = null,
         private ?string $type = null,
-        private array $keys = [],
+        private ?array $keys = [],
         private ?\Closure $func = null,
-        private ?\Closure $validator = null
+        private ?\Closure $validator = null,
+        private mixed $default = null
     )
     {
         // ...
@@ -45,5 +46,7 @@ class RuleOption implements RuleOptionInterface
 
             $this->value = $result;
         }
+
+        $this->value ??= $default;
     }
 }

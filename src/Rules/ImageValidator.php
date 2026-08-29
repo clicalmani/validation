@@ -1,28 +1,51 @@
 <?php
+
 namespace Clicalmani\Validation\Rules;
 
+use Clicalmani\Foundation\Http\Request;
+
+/**
+ * Class ImageValidator
+ *
+ * Validates uploaded image files with support for:
+ * - Extensive MIME type mapping (200+ format extension combinations)
+ * - File extension verification
+ * - Dimension constraint validation (min/max width and height)
+ * - Aspect ratio enforcement (exact, minimum, and maximum limits)
+ * - Safe image integrity verification via `getimagesize()`
+ * - Detailed error handling and customizable error messaging
+ *
+ * @package Clicalmani\Validation\Rules
+ * @author clicalmani
+ */
 class ImageValidator extends FileValidator
 {
+    /**
+     * The argument identifier associated with this validation rule.
+     *
+     * @var string
+     */
     protected static string $argument = 'image';
 
-    public function validate(mixed &$value) : bool
-    {
-        $is_file = parent::validate($value);
+    /**
+     * Internal array containing error messages captured during validation.
+     *
+     * @var array<int, string>
+     */
+    protected array $errors = [];
 
-        if (TRUE === $is_file) {
-            /** @var \Clicalmani\Http\Request */
-            $request = \Clicalmani\Foundation\Http\Request::current();
-            $file = $request->file($this->parameter);
+    /**
+     * Parsed image metadata (width, height, mime, type).
+     *
+     * @var array<string, mixed>
+     */
+    protected array $imageInfo = [];
 
-            return in_array(
-                $file->getClientOriginalExtension(), 
-                array_merge( ...array_values(self::MAP) )
-            );
-        }
-
-        return false;
-    }
-
+    /**
+     * Map of supported image MIME types to their corresponding valid file extensions.
+     *
+     * @var array<string, array<int, string>>
+     */
     private const MAP = [
         'image/aces' => ['exr'],
         'image/apng' => ['apng', 'png'],
@@ -203,4 +226,360 @@ class ImageValidator extends FileValidator
         'image/x-xwindowdump' => ['xwd'],
         'image/x.djvu' => ['djvu', 'djv'],
     ];
+
+    /**
+     * Configuration option definitions for image rule checks.
+     *
+     * @return array<string, array{
+     * required: bool,
+     * type: string,
+     * default?: mixed,
+     * function?: callable,
+     * validator?: callable
+     * }>
+     */
+    public function options(): array
+    {
+        $options = parent::options();
+
+        $options['minWidth'] = [
+            'required' => false,
+            'type' => 'int',
+            'function' => fn(string $value) => (int) $value
+        ];
+
+        $options['maxWidth'] = [
+            'required' => false,
+            'type' => 'int',
+            'function' => fn(string $value) => (int) $value
+        ];
+
+        $options['minHeight'] = [
+            'required' => false,
+            'type' => 'int',
+            'function' => fn(string $value) => (int) $value
+        ];
+
+        $options['maxHeight'] = [
+            'required' => false,
+            'type' => 'int',
+            'function' => fn(string $value) => (int) $value
+        ];
+
+        $options['ratio'] = [
+            'required' => false,
+            'type' => 'string',
+            'validator' => fn(string $value) => (bool) preg_match('/^[0-9]+:[0-9]+$/', $value)
+        ];
+
+        $options['minRatio'] = [
+            'required' => false,
+            'type' => 'float',
+            'function' => fn(string $value) => (float) $value
+        ];
+
+        $options['maxRatio'] = [
+            'required' => false,
+            'type' => 'float',
+            'function' => fn(string $value) => (float) $value
+        ];
+
+        return $options;
+    }
+
+    /**
+     * Validates an uploaded image against format, MIME, dimension, and ratio rules.
+     *
+     * @param mixed &$value Target data reference to validate and update.
+     * @return bool `true` on success, `false` on failure.
+     */
+    public function validate(mixed &$value): bool
+    {
+        $this->errors = [];
+        $this->imageInfo = [];
+
+        // 1. Perform base file validations via parent class
+        if (!parent::validate($value)) {
+            return false;
+        }
+
+        // 2. Extract validated underlying file payload
+        $file = $this->getValidFile();
+
+        if (empty($file)) {
+            $this->addError("Unable to read the target image file.");
+            return false;
+        }
+
+        // 3. Resolve Request instance context
+        $request = Request::current();
+
+        if (!$request) {
+            $this->addError("Unable to resolve current request context.");
+            return false;
+        }
+
+        $uploadedFile = $request->file($this->parameter);
+
+        if (!$uploadedFile) {
+            $this->addError("No uploaded image file found in request context.");
+            return false;
+        }
+
+        // 4. Validate extension against allowed format mappings
+        $extension = $uploadedFile->getClientOriginalExtension();
+
+        if (!$this->validateExtension($extension)) {
+            return false;
+        }
+
+        // 5. Validate declared MIME type
+        $mimeType = $uploadedFile->getClientMediaType();
+
+        if (!$this->validateMimeType($mimeType)) {
+            return false;
+        }
+
+        // 6. Verify image binary format integrity & metadata
+        $path = $file['tmp_name'] ?? '';
+        $imageInfo = @getimagesize($path);
+
+        if ($imageInfo === false) {
+            $this->addError("The file is not a valid or readable image.");
+            return false;
+        }
+
+        $width = (int) $imageInfo[0];
+        $height = (int) $imageInfo[1];
+        $mime = $imageInfo['mime'];
+
+        $this->imageInfo = [
+            'width' => $width,
+            'height' => $height,
+            'mime' => $mime,
+            'type' => $imageInfo[2] ?? null
+        ];
+
+        // 7. Validate image dimensions against set constraints
+        if (!$this->validateDimensions($width, $height)) {
+            return false;
+        }
+
+        // 8. Validate aspect ratio constraints
+        if (!$this->validateRatio($width, $height)) {
+            return false;
+        }
+
+        // 9. Attach parsed image metadata to reference payload
+        $value = array_merge($file, $this->imageInfo);
+
+        return true;
+    }
+
+    /**
+     * Checks if the target extension is supported by internal MIME mappings.
+     *
+     * @param string $extension
+     * @return bool
+     */
+    private function validateExtension(string $extension): bool
+    {
+        $allowedExtensions = array_unique(array_merge(...array_values(self::MAP)));
+
+        if (!in_array(strtolower($extension), $allowedExtensions, true)) {
+            $this->addError("The extension '{$extension}' is not permitted for images.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Checks if the supplied MIME type exists within internal mappings.
+     *
+     * @param string $mimeType
+     * @return bool
+     */
+    private function validateMimeType(string $mimeType): bool
+    {
+        if (!isset(self::MAP[$mimeType])) {
+            $this->addError("The MIME type '{$mimeType}' is not supported.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validates pixel dimensions against optional min and max bounds.
+     *
+     * @param int $width
+     * @param int $height
+     * @return bool
+     */
+    private function validateDimensions(int $width, int $height): bool
+    {
+        // Width check
+        if ($minWidth = $this->options['minWidth'] ?? null) {
+            if ($width < $minWidth) {
+                $this->addError("The image width ({$width}px) is less than the minimum required ({$minWidth}px).");
+                return false;
+            }
+        }
+
+        if ($maxWidth = $this->options['maxWidth'] ?? null) {
+            if ($width > $maxWidth) {
+                $this->addError("The image width ({$width}px) exceeds the maximum allowed ({$maxWidth}px).");
+                return false;
+            }
+        }
+
+        // Height check
+        if ($minHeight = $this->options['minHeight'] ?? null) {
+            if ($height < $minHeight) {
+                $this->addError("The image height ({$height}px) is less than the minimum required ({$minHeight}px).");
+                return false;
+            }
+        }
+
+        if ($maxHeight = $this->options['maxHeight'] ?? null) {
+            if ($height > $maxHeight) {
+                $this->addError("The image height ({$height}px) exceeds the maximum allowed ({$maxHeight}px).");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Validates aspect ratio rules for exact match, minimum, or maximum thresholds.
+     *
+     * @param int $width
+     * @param int $height
+     * @return bool
+     */
+    private function validateRatio(int $width, int $height): bool
+    {
+        if ($height === 0) {
+            $this->addError("Invalid image dimensions (height is 0).");
+            return false;
+        }
+
+        $ratio = $width / $height;
+
+        // Exact ratio matching (formatted as "width:height")
+        if ($exactRatio = $this->options['ratio'] ?? null) {
+            [$rWidth, $rHeight] = explode(':', $exactRatio);
+
+            if ((float) $rHeight === 0.0) {
+                $this->addError("Invalid target ratio configured.");
+                return false;
+            }
+
+            $expectedRatio = (float) $rWidth / (float) $rHeight;
+
+            if (abs($ratio - $expectedRatio) > 0.01) {
+                $this->addError("The image aspect ratio ({$width}:{$height}) does not match the expected ratio ({$exactRatio}).");
+                return false;
+            }
+        }
+
+        // Minimum ratio check
+        if ($minRatio = $this->options['minRatio'] ?? null) {
+            if ($ratio < $minRatio) {
+                $this->addError("The image ratio ({$ratio}) is less than the minimum allowed ratio ({$minRatio}).");
+                return false;
+            }
+        }
+
+        // Maximum ratio check
+        if ($maxRatio = $this->options['maxRatio'] ?? null) {
+            if ($ratio > $maxRatio) {
+                $this->addError("The image ratio ({$ratio}) exceeds the maximum allowed ratio ({$maxRatio}).");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Records a validation error and logs the details.
+     *
+     * @param string $message
+     * @return void
+     */
+    private function addError(string $message): void
+    {
+        $this->errors[] = $message;
+        $this->log($message);
+    }
+
+    /**
+     * Generates human-readable primary error message, supporting template variables.
+     *
+     * @return string|null
+     */
+    public function message(): ?string
+    {
+        $customMessage = $this->options['message'] ?? null;
+
+        if ($customMessage) {
+            return str_replace(
+                ['{max}', '{min}', '{width}', '{height}'],
+                [
+                    $this->formatSize($this->options['max'] ?? 0),
+                    $this->formatSize($this->options['min'] ?? 0),
+                    $this->imageInfo['width'] ?? '?',
+                    $this->imageInfo['height'] ?? '?'
+                ],
+                $customMessage
+            );
+        }
+
+        return $this->errors[0] ?? "The file must be a valid image.";
+    }
+
+    /**
+     * Retrieves all recorded error messages.
+     *
+     * @return array<int, string>
+     */
+    public function getErrors(): array
+    {
+        return $this->errors;
+    }
+
+    /**
+     * Gets parsed image info array containing dimensions and MIME metadata.
+     *
+     * @return array<string, mixed>
+     */
+    public function getImageInfo(): array
+    {
+        return $this->imageInfo;
+    }
+
+    /**
+     * Retrieves the primary file extension for a given MIME type.
+     *
+     * @param string $mimeType
+     * @return string|null
+     */
+    public function getExtensionFromMime(string $mimeType): ?string
+    {
+        return self::MAP[$mimeType][0] ?? null;
+    }
+
+    /**
+     * Checks whether a specific MIME type is supported by the validator.
+     *
+     * @param string $mimeType
+     * @return bool
+     */
+    public function isSupportedMime(string $mimeType): bool
+    {
+        return isset(self::MAP[$mimeType]);
+    }
 }
