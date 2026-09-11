@@ -59,7 +59,7 @@ class EnumValidator extends Rule
             'list' => [
                 'required' => true,
                 'type' => 'array',
-                'function' => fn(string $value) => $this->parseList($value)
+                'function' => [$this, 'parseList']
             ],
             
             // Enable case-insensitive match for string evaluations
@@ -130,7 +130,7 @@ class EnumValidator extends Rule
      * @param string $value
      * @return array<int, mixed>
      */
-    private function parseList(string $value): array
+    public function parseList(string $value): array
     {
         // Parse raw JSON input if formatted as an array or object representation
         if (str_starts_with($value, '[') || str_starts_with($value, '{')) {

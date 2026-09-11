@@ -91,7 +91,7 @@ class Rule extends InputParser implements RuleInterface
         return $this->hasArgument('confirmed');
     }
 
-    private function hasArgument(string $argument) : bool
+    protected function hasArgument(string $argument) : bool
     {
         return Validator::getArguments($this->pattern)->contains($argument);
     }
@@ -117,7 +117,7 @@ class Rule extends InputParser implements RuleInterface
                     $value['required'] ?? null,
                     $value['type'] ?? null,
                     $value['keys'] ?? [],
-                    $value['function'] ?? null,
+                    $value['function'] ?? $value['func'] ?? null,
                     $value['validator'] ?? null,
                     $value['default'] ?? null
                 );

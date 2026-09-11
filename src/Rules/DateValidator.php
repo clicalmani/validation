@@ -213,7 +213,7 @@ class DateValidator extends Rule
                 
                 if ($dt !== false) {
                     $errors = DateTime::getLastErrors();
-                    if ($errors && $errors['warning_count'] === 0 && $errors['error_count'] === 0) {
+                    if (!$errors || (@$errors['warning_count'] === 0 && @$errors['error_count'] === 0)) {
                         $this->parsedDate = $dt;
                         $this->validFormat = $format;
                         $parsed = true;
@@ -243,21 +243,7 @@ class DateValidator extends Rule
         if (!empty($this->options['formats'])) {
             return $this->options['formats'];
         }
-
-        $format = $this->options['format'] ?? 'Y-m-d';
-        
-        $commonFormats = [
-            'Y-m-d', 'd/m/Y', 'm/d/Y', 'd-m-Y', 'm-d-Y',
-            'Y/m/d', 'Y.m.d', 'd.m.Y', 'm.d.Y',
-            'Y-m-d H:i:s', 'Y-m-d H:i', 'd/m/Y H:i:s',
-            'Y-M-d', 'M d Y', 'd M Y', 'M d, Y'
-        ];
-
-        if (in_array($format, $commonFormats, true)) {
-            return $commonFormats;
-        }
-
-        return [$format];
+        return [$this->options['format'] ?? 'Y-m-d'];
     }
 
     /**

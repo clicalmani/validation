@@ -11,8 +11,8 @@ class RuleOption implements RuleOptionInterface
         private ?bool $is_required = null,
         private ?string $type = null,
         private ?array $keys = [],
-        private ?\Closure $func = null,
-        private ?\Closure $validator = null,
+        private \Closure|string|array|null $func = null,
+        private \Closure|string|array|null $validator = null,
         private mixed $default = null
     )
     {
@@ -25,11 +25,11 @@ class RuleOption implements RuleOptionInterface
             throw new ValidationException(sprintf("Option %s is required for %s rule.", $this->name));
         }
         
-        if ($this->func && $this->func instanceof \Closure) {
-            $this->value = $this->func->call($this, $this->value);
+        if ($this->func && is_callable($this->func)) {
+            $this->value = call_user_func($this->func, $this->value);
         }
         
-        if ($this->validator && FALSE == call($this->validator, $this->value)) {
+        if ($this->validator && is_callable($this->validator) && FALSE == call_user_func($this->validator, $this->value)) {
             throw new ValidationException("$this->value is not a valid option $this->name value for %s rule.");
         }
         

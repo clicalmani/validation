@@ -155,7 +155,8 @@ class InputParser
             'bool' => $value = $this->parseBoolean($value),
             'boolean' => $value = $this->parseBoolean($value),
             'array' => $value = $this->parseArray($value),
-            'object' => $value = $this->parseObject($value)
+            'object' => $value = $this->parseObject($value),
+            default => $value = $this->parseString($value)
         };
     }
 }

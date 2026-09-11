@@ -95,17 +95,11 @@ class BooleanValidator extends Rule
                 return true;
             }
 
-            // Check if parameter presence is strictly required
-            if ($this->isRequired()) {
-                $this->addError("The boolean value is required.");
-                return false;
-            }
-
             return true;
         }
 
         // 2. Parse boolean representation
-        $result = $this->parseBoolean($value);
+        $result = $this->parse($value);
 
         if ($result === null) {
             $this->addError($this->getErrorMessage($value));
@@ -124,7 +118,7 @@ class BooleanValidator extends Rule
      * @param mixed $value
      * @return bool|null Returns parsed boolean or `null` if invalid.
      */
-    private function parseBoolean(mixed $value): ?bool
+    private function parse(mixed $value): ?bool
     {
         // Already a native boolean
         if (is_bool($value)) {
@@ -157,16 +151,6 @@ class BooleanValidator extends Rule
         }
 
         return null;
-    }
-
-    /**
-     * Checks if the target parameter is required.
-     *
-     * @return bool
-     */
-    private function isRequired(): bool
-    {
-        return $this->hasArgument('required');
     }
 
     /**
@@ -241,7 +225,7 @@ class BooleanValidator extends Rule
      */
     public function normalize(mixed $value): ?bool
     {
-        return $this->parseBoolean($value);
+        return $this->parse($value);
     }
 
     /**
@@ -252,6 +236,6 @@ class BooleanValidator extends Rule
      */
     public function isValidBoolean(mixed $value): bool
     {
-        return $this->parseBoolean($value) !== null;
+        return $this->parse($value) !== null;
     }
 }
