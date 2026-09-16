@@ -172,7 +172,7 @@ class PasswordValidator extends Rule
         }
 
         // 3. Space prohibition check
-        if ($this->options['noSpace'] ?? true) {
+        if (isset($this->options['noSpace']) &&  $this->options['noSpace'] === true) {
             if (str_contains($value, ' ')) {
                 $this->addError("The password must not contain spaces.");
                 return false;
@@ -185,7 +185,7 @@ class PasswordValidator extends Rule
         }
 
         // 5. Common password/sequence check
-        if ($this->options['common'] ?? true) {
+        if (isset($this->options['common']) && $this->options['common'] === false) {
             if ($this->isCommonPassword($value)) {
                 $this->addError("The password is too common. Please choose a more secure password.");
                 return false;
@@ -203,8 +203,8 @@ class PasswordValidator extends Rule
         }
 
         // 8. Truncation sanitization (if max defined)
-        if ($this->options['max'] ?? false) {
-            $value = substr($value, 0, $this->options['max']);
+        if ($max = $this->options['max'] ?? null) {
+            $value = substr($value, 0, $max);
         }
 
         return true;
@@ -228,7 +228,7 @@ class PasswordValidator extends Rule
             }
             return true;
         }
-
+        
         // Minimum length check
         if ($min = $this->options['min'] ?? 8) {
             if ($length < $min) {
@@ -266,7 +266,7 @@ class PasswordValidator extends Rule
             foreach ($chars as $char) {
                 if ($char === $currentChar) {
                     $repeatCount++;
-                    if ($repeatCount > $repeatLimit) {
+                    if ($repeatCount > $repeatLimit - 1) {
                         $this->addError("The password must not contain more than {$repeatLimit} consecutive identical character(s).");
                         return false;
                     }

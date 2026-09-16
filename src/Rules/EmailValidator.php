@@ -142,14 +142,14 @@ class EmailValidator extends Rule
         // 2. Domain checks (MX / DNS)
         $domain = substr($email, strrpos($email, '@') + 1);
 
-        if ($this->options['mx'] ?? false) {
+        if (isset($this->options['mx']) && $this->options['mx'] === true) {
             if (!$this->validateMX($domain)) {
                 $this->addError("The domain '{$domain}' does not have valid mail server (MX) records.");
                 return false;
             }
         }
 
-        if ($this->options['dns'] ?? false) {
+        if (isset($this->options['dns']) && $this->options['dns'] === true) {
             if (!$this->validateDNS($domain)) {
                 $this->addError("The domain '{$domain}' is invalid or unresolvable.");
                 return false;
