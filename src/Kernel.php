@@ -33,7 +33,6 @@ class Kernel {
             \Clicalmani\Validation\Rules\StringValidator::class,
             \Clicalmani\Validation\Rules\StringsValidator::class,
             \Clicalmani\Validation\Rules\UrlValidator::class,
-            \Clicalmani\Validation\Rules\NavigationGuardValidator::class,
             \Clicalmani\Validation\Rules\PasswordValidator::class,
             \Clicalmani\Validation\Rules\FileValidator::class,
             \Clicalmani\Validation\Rules\ImageValidator::class,

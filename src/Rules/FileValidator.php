@@ -4,6 +4,8 @@ namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
 
+use function Clicalmani\Validation\parseSize;
+
 /**
  * Class FileValidator
  * 
@@ -58,14 +60,14 @@ class FileValidator extends Rule
             'max' => [
                 'required' => false,
                 'type' => 'int',
-                'function' => fn(string $value) => $this->parseSize($value)
+                'function' => fn(string $value) => parseSize($value)
             ],
             
             // Minimum file size (parsed to bytes)
             'min' => [
                 'required' => false,
                 'type' => 'int',
-                'function' => fn(string $value) => $this->parseSize($value)
+                'function' => fn(string $value) => parseSize($value)
             ],
             
             // Allowed file extensions
@@ -473,31 +475,6 @@ class FileValidator extends Rule
         }
 
         return true;
-    }
-
-    /**
-     * Parses human-readable size notations (K, M, G) into byte integers.
-     *
-     * @param string $value
-     * @return int
-     */
-    private function parseSize(string $value): int
-    {
-        $value = strtoupper($value);
-        
-        if (preg_match('/^(\d+)([KMG])?$/', $value, $matches)) {
-            $size = (int) $matches[1];
-            $unit = $matches[2] ?? '';
-            
-            return match ($unit) {
-                'K' => $size * 1024,
-                'M' => $size * 1024 * 1024,
-                'G' => $size * 1024 * 1024 * 1024,
-                default => $size
-            };
-        }
-        
-        return (int) $value;
     }
 
     /**

@@ -4,6 +4,9 @@ namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
 
+use function Clicalmani\Validation\validateFlags;
+use function Clicalmani\Validation\validatePattern;
+
 /**
  * Class RegExpValidator
  * 
@@ -66,7 +69,7 @@ class RegExpValidator extends Rule
             'pattern' => [
                 'required' => true,
                 'type' => 'string',
-                'validator' => fn(string $value) => $this->validatePattern($value)
+                'validator' => fn(string $value) => validatePattern($value)
             ],
             
             // Pattern modifier flags (e.g. i, m, s, u)
@@ -74,7 +77,7 @@ class RegExpValidator extends Rule
                 'required' => false,
                 'type' => 'string',
                 'default' => '',
-                'validator' => fn(string $value) => $this->validateFlags($value)
+                'validator' => fn(string $value) => validateFlags($value)
             ],
             
             // Value sanitization filter prior to regex evaluation
@@ -222,44 +225,6 @@ class RegExpValidator extends Rule
         }
         
         return '/';
-    }
-
-    /**
-     * Validates structural syntax of regular expression pattern string.
-     *
-     * @param string $pattern
-     * @return bool
-     */
-    private function validatePattern(string $pattern): bool
-    {
-        if (empty($pattern)) {
-            return false;
-        }
-
-        $delimiter = $this->detectDelimiter($pattern);
-        $testPattern = $delimiter . $pattern . $delimiter;
-        
-        return @preg_match($testPattern, 'test') !== false;
-    }
-
-    /**
-     * Validates regex modifier flags string against PCRE allowed set.
-     *
-     * @param string $flags
-     * @return bool
-     */
-    private function validateFlags(string $flags): bool
-    {
-        $allowedFlags = ['i', 'm', 's', 'x', 'u', 'U', 'A', 'D', 'S', 'J'];
-        $flagChars = str_split($flags);
-        
-        foreach ($flagChars as $char) {
-            if (!in_array($char, $allowedFlags, true)) {
-                return false;
-            }
-        }
-        
-        return true;
     }
 
     /**

@@ -4,6 +4,8 @@ namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
 
+use function Clicalmani\Validation\parseNumeric;
+
 /**
  * Class NumberValidator
  * 
@@ -51,14 +53,14 @@ class NumberValidator extends Rule
             'min' => [
                 'required' => false,
                 'type' => 'numeric',
-                'function' => fn(string $value) => $this->parseNumeric($value)
+                'function' => fn(string $value) => parseNumeric($value)
             ],
             
             // Maximum value constraint (supports K, M, G unit suffixes)
             'max' => [
                 'required' => false,
                 'type' => 'numeric',
-                'function' => fn(string $value) => $this->parseNumeric($value)
+                'function' => fn(string $value) => parseNumeric($value)
             ],
             
             // Range interval constraint (format: min-max)
@@ -171,31 +173,6 @@ class NumberValidator extends Rule
         }
 
         return null;
-    }
-
-    /**
-     * Parses numeric notation strings including shorthand units (K, M, G).
-     *
-     * @param string $value
-     * @return float|int
-     */
-    private function parseNumeric(string $value): float|int
-    {
-        $value = trim($value);
-        
-        if (preg_match('/^(\d+\.?\d*)([KMG])?$/i', $value, $matches)) {
-            $number = (float) $matches[1];
-            $unit = strtoupper($matches[2] ?? '');
-            
-            return match ($unit) {
-                'K' => $number * 1000,
-                'M' => $number * 1000000,
-                'G' => $number * 1000000000,
-                default => $number,
-            };
-        }
-        
-        return (float) $value;
     }
 
     /**

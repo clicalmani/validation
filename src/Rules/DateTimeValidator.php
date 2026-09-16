@@ -7,6 +7,8 @@ use DateTime;
 use DateTimeZone;
 use Exception;
 
+use function Clicalmani\Validation\validateFormatString;
+
 /**
  * Class DateTimeValidator
  *
@@ -70,7 +72,7 @@ class DateTimeValidator extends Rule
                 'required' => false,
                 'type' => 'string',
                 'default' => 'Y-m-d H:i:s',
-                'validator' => fn(string $value) => $this->validateFormatString($value)
+                'validator' => fn(string $value) => validateFormatString($value)
             ],
             
             // Multiple candidate date/time formats
@@ -411,29 +413,6 @@ class DateTimeValidator extends Rule
         $clean1 = preg_replace('/[^0-9]/', '', $datetime1);
         $clean2 = preg_replace('/[^0-9]/', '', $datetime2);
         return $clean1 === $clean2;
-    }
-
-    /**
-     * Validates individual characters in a custom format string.
-     *
-     * @param string $format
-     * @return bool
-     */
-    private function validateFormatString(string $format): bool
-    {
-        $allowedChars = ['Y', 'm', 'd', 'H', 'i', 's', ' '];
-        $allowedSeparators = ['-', '/', '.', ':', 'T', ' ', '+'];
-        
-        $clean = str_replace($allowedSeparators, '', $format);
-        $chars = str_split($clean);
-        
-        foreach ($chars as $char) {
-            if (!in_array($char, $allowedChars, true)) {
-                return false;
-            }
-        }
-        
-        return true;
     }
 
     /**

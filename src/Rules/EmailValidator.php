@@ -4,6 +4,8 @@ namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
 
+use function Clicalmani\Validation\normalizeModelName;
+
 /**
  * Class EmailValidator
  *
@@ -21,7 +23,6 @@ use Clicalmani\Validation\Rule;
 class EmailValidator extends Rule
 {
     use ResolvesModel;
-    use NormalizesModel;
 
     /**
      * The argument identifier associated with this validation rule.
@@ -54,7 +55,7 @@ class EmailValidator extends Rule
             'unique' => [
                 'required' => false,
                 'type' => 'string',
-                'function' => fn(string $model) => $this->normalizeModelName($model)
+                'function' => fn(string $model) => normalizeModelName($model)
             ],
             
             // Database column to check for uniqueness (defaults to the field parameter name)
