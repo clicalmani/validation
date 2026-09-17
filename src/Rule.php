@@ -1,7 +1,7 @@
 <?php
 namespace Clicalmani\Validation;
 
-use Clicalmani\Foundation\Support\Facades\Log;
+use Clicalmani\Core\Support\Facades\Log;
 use Clicalmani\Validation\Exceptions\ValidationException;
 
 class Rule extends InputParser implements RuleInterface
@@ -139,7 +139,7 @@ class Rule extends InputParser implements RuleInterface
     {
         $message = $this->message() ?: $message;
 
-        if (\Clicalmani\Foundation\Http\Request::current()?->hasHeader('X-Inertia')) {
+        if (\Clicalmani\Core\Http\Request::current()?->hasHeader('X-Inertia')) {
             \Inertia\ComponentData::addError($this->parameter, $message);
             die(back());
         } else {

@@ -1,7 +1,7 @@
 <?php
 namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Foundation\Filesystem\DirectoryScanner;
+use Clicalmani\Core\Filesystem\DirectoryScanner;
 
 /**
  * Trait ResolvesModelClass

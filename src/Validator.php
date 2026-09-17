@@ -1,8 +1,8 @@
 <?php
 namespace Clicalmani\Validation;
 
-use Clicalmani\Foundation\Http\Request;
-use Clicalmani\Foundation\Providers\ValidationServiceProvider;
+use Clicalmani\Core\Http\Request;
+use Clicalmani\Core\Providers\ValidationServiceProvider;
 
 class Validator
 {

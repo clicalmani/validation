@@ -2,7 +2,7 @@
 
 namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Foundation\Http\Request;
+use Clicalmani\Core\Http\Request;
 
 /**
  * Class ImageValidator
