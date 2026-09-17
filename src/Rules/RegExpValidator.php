@@ -3,6 +3,7 @@
 namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
+use Clicalmani\Validation\ValidatesOption;
 
 use function Clicalmani\Validation\validateFlags;
 use function Clicalmani\Validation\validatePattern;
@@ -23,6 +24,8 @@ use function Clicalmani\Validation\validatePattern;
  */
 class RegExpValidator extends Rule
 {
+    use ValidatesOption;
+
     /**
      * The argument identifier associated with this validation rule.
      *
@@ -69,7 +72,7 @@ class RegExpValidator extends Rule
             'pattern' => [
                 'required' => true,
                 'type' => 'string',
-                'validator' => fn(string $value) => validatePattern($value)
+                'validator' => fn(string $value) => $this->validatePattern($value)
             ],
             
             // Pattern modifier flags (e.g. i, m, s, u)
@@ -77,7 +80,7 @@ class RegExpValidator extends Rule
                 'required' => false,
                 'type' => 'string',
                 'default' => '',
-                'validator' => fn(string $value) => validateFlags($value)
+                'validator' => fn(string $value) => $this->validateFlags($value)
             ],
             
             // Value sanitization filter prior to regex evaluation

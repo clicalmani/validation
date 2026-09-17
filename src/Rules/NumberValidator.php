@@ -3,6 +3,7 @@
 namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
+use Clicalmani\Validation\ValidatesOption;
 
 use function Clicalmani\Validation\parseNumeric;
 
@@ -22,6 +23,8 @@ use function Clicalmani\Validation\parseNumeric;
  */
 class NumberValidator extends Rule
 {
+    use ValidatesOption;
+
     /**
      * The argument identifier associated with this validation rule.
      *
@@ -53,14 +56,14 @@ class NumberValidator extends Rule
             'min' => [
                 'required' => false,
                 'type' => 'numeric',
-                'function' => fn(string $value) => parseNumeric($value)
+                'function' => fn(string $value) => $this->parseNumeric($value)
             ],
             
             // Maximum value constraint (supports K, M, G unit suffixes)
             'max' => [
                 'required' => false,
                 'type' => 'numeric',
-                'function' => fn(string $value) => parseNumeric($value)
+                'function' => fn(string $value) => $this->parseNumeric($value)
             ],
             
             // Range interval constraint (format: min-max)

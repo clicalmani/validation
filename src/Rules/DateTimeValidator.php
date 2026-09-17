@@ -3,6 +3,8 @@
 namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
+use Clicalmani\Validation\Rules\Traits\ValidatesFormatString;
+use Clicalmani\Validation\ValidatesOption;
 use DateTime;
 use DateTimeZone;
 use Exception;
@@ -25,6 +27,8 @@ use function Clicalmani\Validation\validateFormatString;
  */
 class DateTimeValidator extends Rule
 {
+    use ValidatesOption;
+
     /**
      * The argument identifier associated with this validation rule.
      *
@@ -72,7 +76,7 @@ class DateTimeValidator extends Rule
                 'required' => false,
                 'type' => 'string',
                 'default' => 'Y-m-d H:i:s',
-                'validator' => fn(string $value) => validateFormatString($value)
+                'validator' => fn(string $value) => $this->validateFormatString($value)
             ],
             
             // Multiple candidate date/time formats

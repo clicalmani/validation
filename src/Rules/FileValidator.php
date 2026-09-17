@@ -3,6 +3,7 @@
 namespace Clicalmani\Validation\Rules;
 
 use Clicalmani\Validation\Rule;
+use Clicalmani\Validation\ValidatesOption;
 
 use function Clicalmani\Validation\parseSize;
 
@@ -23,6 +24,8 @@ use function Clicalmani\Validation\parseSize;
  */
 class FileValidator extends Rule
 {
+    use ValidatesOption;
+
     /**
      * The argument identifier associated with this validation rule.
      *
@@ -60,14 +63,14 @@ class FileValidator extends Rule
             'max' => [
                 'required' => false,
                 'type' => 'int',
-                'function' => fn(string $value) => parseSize($value)
+                'function' => fn(string $value) => $this->parseSize($value)
             ],
             
             // Minimum file size (parsed to bytes)
             'min' => [
                 'required' => false,
                 'type' => 'int',
-                'function' => fn(string $value) => parseSize($value)
+                'function' => fn(string $value) => $this->parseSize($value)
             ],
             
             // Allowed file extensions
