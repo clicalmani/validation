@@ -307,6 +307,10 @@ class ImageValidator extends FileValidator
         $file = $this->getValidFile();
 
         if (empty($file)) {
+            if ($this->options['allowEmpty'] ?? false) {
+                return true;
+            }
+
             $this->addError("Unable to read the target image file.");
             return false;
         }
@@ -502,18 +506,6 @@ class ImageValidator extends FileValidator
         }
 
         return true;
-    }
-
-    /**
-     * Records a validation error and logs the details.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

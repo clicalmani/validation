@@ -1,6 +1,12 @@
 <?php
 namespace Clicalmani\Validation;
 
+/**
+ * RuleOptionInterface interface
+ * 
+ * @package Clicalmani\Validation
+ * @author  Clément Clicalmani <
+ */
 interface RuleOptionInterface
 {
     /**

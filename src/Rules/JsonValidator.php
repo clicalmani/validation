@@ -39,7 +39,7 @@ class JsonValidator extends Rule
      *
      * @var array<mixed, mixed>
      */
-    protected array $validatedData = [];
+    protected mixed $validatedData = [];
 
     /**
      * Returns the array configuration schema for supported rule options.
@@ -125,14 +125,18 @@ class JsonValidator extends Rule
         // 2. Decode JSON payload
         $assoc = $this->options['assoc'] ?? true;
         $depth = $this->options['depth'] ?? 512;
+
+        $decoded = null;
         
-        $decoded = json_decode((string) $value, $assoc, $depth);
+        if (is_string($value)) {
+            $decoded = json_decode($value, $assoc, $depth);
         
-        // 3. Native syntax/decoding error evaluation
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $error = $this->getJsonError(json_last_error());
-            $this->addError("Invalid JSON: " . $error);
-            return false;
+            // 3. Native syntax/decoding error evaluation
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $error = $this->getJsonError(json_last_error());
+                $this->addError("Invalid JSON: " . $error);
+                return false;
+            }
         }
 
         // 4. Root level data type check
@@ -144,6 +148,11 @@ class JsonValidator extends Rule
 
         // 5. Schema verification (if defined)
         if ($schema = $this->options['schema'] ?? null) {
+            if (!is_array($decoded)) {
+                $this->addError("A schema can only be applied to a JSON object or array.");
+                return false;
+            }
+
             if (!$this->validateSchema($decoded, $schema)) {
                 return false;
             }
@@ -156,7 +165,7 @@ class JsonValidator extends Rule
 
         // 7. Update target reference with validated data structure
         $value = $decoded;
-        $this->validatedData = (array) $decoded;
+        $this->validatedData = $decoded;
         
         return true;
     }
@@ -170,8 +179,8 @@ class JsonValidator extends Rule
      */
     private function validateTypes(mixed $data, array $allowedTypes): bool
     {
-        $types = ['array', 'object', 'string', 'number', 'boolean', 'null'];
-        
+        $types = ['array', 'object', 'string', 'number', 'integer', 'boolean', 'null'];
+
         foreach ($allowedTypes as $type) {
             if (!in_array($type, $types, true)) {
                 $this->addError("The type '{$type}' is not recognized. Allowed types: " . implode(', ', $types));
@@ -179,18 +188,33 @@ class JsonValidator extends Rule
             }
         }
 
-        $dataType = gettype($data);
-        
-        if ($dataType === 'double' || $dataType === 'integer') {
-            $dataType = 'number';
-        }
-        
-        if (!in_array($dataType, $allowedTypes, true)) {
-            $this->addError("The JSON payload must be of type " . implode(' or ', $allowedTypes) . ", but '{$dataType}' was provided.");
+        $valueTypes = $this->jsonTypesOf($data);
+
+        if (!array_intersect($valueTypes, $allowedTypes)) {
+            $this->addError(
+                "The JSON payload must be of type " . implode(' or ', $allowedTypes)
+                . ", but '" . ($valueTypes[0] ?? 'unknown') . "' was provided."
+            );
             return false;
         }
 
         return true;
+    }
+
+    private function jsonTypesOf(mixed $value): array
+    {
+        return match (true) {
+            is_int($value)    => ['integer', 'number'],
+            is_float($value)  => floor($value) === $value && is_finite($value)
+                                    ? ['integer', 'number']   // 1.0 est un entier en JSON Schema
+                                    : ['number'],
+            is_string($value) => ['string'],
+            is_bool($value)   => ['boolean'],
+            is_null($value)   => ['null'],
+            is_object($value) => ['object'],
+            is_array($value)  => array_is_list($value) ? ['array'] : ['object'],
+            default           => [],
+        };
     }
 
     /**
@@ -215,24 +239,34 @@ class JsonValidator extends Rule
         // Property-level type and regex pattern validation
         if (isset($schema['properties']) && is_array($schema['properties'])) {
             foreach ($schema['properties'] as $key => $property) {
-                if (array_key_exists($key, $data)) {
-                    if (isset($property['type'])) {
-                        $types = explode('|', $property['type']);
-                        $valueType = gettype($data[$key]);
-                        if ($valueType === 'double' || $valueType === 'integer') {
-                            $valueType = 'number';
-                        }
-                        if (!in_array($valueType, $types, true)) {
-                            $this->addError("Property '{$key}' must be of type " . implode(' or ', $types) . ", but '{$valueType}' was provided.");
-                            return false;
-                        }
+                if (!array_key_exists($key, $data)) {
+                    continue;
+                }
+
+                if (isset($property['type'])) {
+                    $types = array_map('trim', explode('|', $property['type']));
+                    $valueTypes = $this->jsonTypesOf($data[$key]);
+
+                    if (!array_intersect($valueTypes, $types)) {
+                        $this->addError(
+                            "Property '{$key}' must be of type " . implode(' or ', $types)
+                            . ", but '" . ($valueTypes[0] ?? 'unknown') . "' was provided."
+                        );
+                        return false;
                     }
-                    
-                    if (isset($property['pattern']) && is_string($data[$key])) {
-                        if (!preg_match($property['pattern'], $data[$key])) {
-                            $this->addError("Property '{$key}' does not match the expected format pattern.");
-                            return false;
-                        }
+                }
+
+                if (isset($property['pattern']) && is_string($data[$key])) {
+                    $match = @preg_match($property['pattern'], $data[$key]);
+
+                    if ($match === false) {
+                        $this->addError("Property '{$key}' has an invalid validation pattern.");
+                        return false;
+                    }
+
+                    if ($match === 0) {
+                        $this->addError("Property '{$key}' does not match the expected format pattern.");
+                        return false;
                     }
                 }
             }
@@ -264,7 +298,7 @@ class JsonValidator extends Rule
                     $data[$key] = $this->cleanData($value);
                 }
                 
-                if (empty($data[$key]) && $data[$key] !== 0 && $data[$key] !== false) {
+                if ($data[$key] === '' || $data[$key] === null || $data[$key] === []) {
                     unset($data[$key]);
                 }
             }
@@ -279,7 +313,7 @@ class JsonValidator extends Rule
                     $array[$key] = $this->cleanData($value);
                 }
                 
-                if (empty($array[$key]) && $array[$key] !== 0 && $array[$key] !== false) {
+                if ($array[$key] === '' || $array[$key] === null || $array[$key] === []) {
                     unset($array[$key]);
                 }
             }
@@ -308,18 +342,6 @@ class JsonValidator extends Rule
             JSON_ERROR_UNSUPPORTED_TYPE => 'A value of an unsupported type was given.',
             default => 'Unknown JSON error occurred (code: ' . $errorCode . ').'
         };
-    }
-
-    /**
-     * Appends an error message to the internal collection and logs it.
-     *
-     * @param string $message Error message string.
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**
@@ -353,7 +375,7 @@ class JsonValidator extends Rule
      *
      * @return array<mixed, mixed>
      */
-    public function getValidatedData(): array
+    public function getValidatedData(): mixed
     {
         return $this->validatedData;
     }

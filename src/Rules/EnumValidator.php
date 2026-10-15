@@ -100,27 +100,19 @@ class EnumValidator extends Rule
      */
     public function validate(mixed &$value): bool
     {
-        // 1. Sanitize the provided input value
-        $value = $this->sanitizeValue($value);
-        
-        if ($value === null) {
+        $found = $this->matches($value);
+
+        if ($found === null) {
             $this->addError("The provided value is invalid.");
             return false;
         }
 
-        // 2. Prepare allowed values list according to settings
-        $list = $this->prepareList();
-
-        // 3. Perform membership verification
-        $isValid = $this->isInList($value, $list);
-
-        if (!$isValid) {
-            $this->addError($this->getErrorMessage($value, $list));
+        if (!$found) {
+            $this->addError($this->getErrorMessage($value, $this->prepareList()));
             return false;
         }
 
         $this->validatedValue = $value;
-
         return true;
     }
 
@@ -286,18 +278,6 @@ class EnumValidator extends Rule
     }
 
     /**
-     * Appends error message to stack and logs entry.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Retrieves primary user message for output presentation.
      *
      * @return string|null
@@ -347,6 +327,17 @@ class EnumValidator extends Rule
     public function inList(mixed $value, array $list): bool
     {
         $this->options['list'] = $list;
+        return $this->isInList($value, $this->prepareList());
+    }
+
+    protected function matches(mixed &$value): ?bool
+    {
+        $value = $this->sanitizeValue($value);
+
+        if ($value === null) {
+            return null;
+        }
+
         return $this->isInList($value, $this->prepareList());
     }
 }

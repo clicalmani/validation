@@ -1,6 +1,12 @@
 <?php
 namespace Clicalmani\Validation;
 
+/**
+ * ValidatesOption trait
+ * 
+ * @package Clicalmani\Validation
+ * @author  Clément Clicalmani <
+ */
 trait ValidatesOption
 {
     /**

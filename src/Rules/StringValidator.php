@@ -126,50 +126,38 @@ class StringValidator extends Rule
      */
     public function validate(mixed &$value): bool
     {
-        // 1. Cast input to string
-        $value = $this->castToString($value);
-        
-        if ($value === null) {
+        $string = $this->castToString($value);
+
+        if ($string === null) {
             $this->addError("The provided value cannot be converted to a string.");
             return false;
         }
 
-        // 2. Apply sanitization filters
-        $this->applySanitize($value);
+        // 2. Sanitization (remplit $this->sanitizedValue, tronque si sanitize + max)
+        $this->applySanitize($string);
+        $string = $this->sanitizedValue;
 
-        // 3. Validate string length constraints
-        if (!$this->validateLength($value)) {
+        // 3. Length
+        if (!$this->validateLength($string)) {
             return false;
         }
 
-        // 4. Validate space restriction
-        if ($this->options['noSpace'] ?? false) {
-            if (str_contains($value, ' ')) {
-                $this->addError("The string must not contain spaces.");
-                return false;
-            }
-        }
-
-        // 5. Validate special character restriction
-        if ($this->options['noSpecial'] ?? false) {
-            if (preg_match('/[^a-zA-Z0-9\s]/', $value)) {
-                $this->addError("The string must not contain special characters.");
-                return false;
-            }
-        }
-
-        // 6. Validate format constraints
-        if (!$this->validateFormat($value)) {
+        if (($this->options['noSpace'] ?? false) && str_contains($string, ' ')) {
+            $this->addError("The string must not contain spaces.");
             return false;
         }
 
-        // 7. Validate regex pattern
-        if (!$this->validatePattern($value)) {
+        if (($this->options['noSpecial'] ?? false) && preg_match('/[^a-zA-Z0-9 ]/', $string)) {
+            $this->addError("The string must not contain special characters.");
             return false;
         }
 
-        // 8. Update original variable reference with sanitized value
-        $value = $this->sanitizedValue;
+        if (!$this->validateFormat($string) || !$this->validatePattern($string)) {
+            return false;
+        }
+
+        $this->sanitizedValue = $string;
+        $value = $string;
 
         return true;
     }
@@ -231,7 +219,7 @@ class StringValidator extends Rule
                 $this->sanitizedValue = strtoupper($value);
                 break;
             case 'ucfirst':
-                $this->sanitizedValue = ucfirst(strtolower($value));
+                $this->sanitizedValue = ucfirst($value);
                 break;
             case 'ucwords':
                 $this->sanitizedValue = ucwords(strtolower($value));
@@ -248,7 +236,7 @@ class StringValidator extends Rule
 
         // Re-apply max length truncation if defined
         if ($max = $this->options['max'] ?? null) {
-            $this->sanitizedValue = substr($this->sanitizedValue, 0, $max);
+            $this->sanitizedValue = mb_substr($this->sanitizedValue, 0, $max);
         }
     }
 
@@ -260,7 +248,7 @@ class StringValidator extends Rule
      */
     private function validateLength(string $value): bool
     {
-        $length = strlen($value);
+        $length = mb_strlen($value);
 
         // Exact length check
         if ($exactLength = $this->options['length'] ?? null) {
@@ -284,11 +272,6 @@ class StringValidator extends Rule
             if ($length > $max) {
                 $this->addError("The string must not exceed {$max} characters.");
                 return false;
-            }
-            
-            // Truncate if sanitization is not specified
-            if (!isset($this->options['sanitize'])) {
-                $this->sanitizedValue = substr($value, 0, $max);
             }
         }
 
@@ -343,24 +326,12 @@ class StringValidator extends Rule
             return true;
         }
 
-        if (!@preg_match($pattern, $value)) {
+        if (false === preg_match($pattern, $value)) {
             $this->addError("The string does not match the expected pattern.");
             return false;
         }
 
         return true;
-    }
-
-    /**
-     * Appends an error message to internal errors array and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

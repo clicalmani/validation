@@ -327,18 +327,6 @@ class FloatValidator extends Rule
     }
 
     /**
-     * Records a validation error and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Generates a human-readable primary error message, substituting rule placeholders.
      *
      * @return string|null

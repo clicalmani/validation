@@ -153,36 +153,32 @@ class NumericValidator extends NumberValidator
      */
     private function sanitizeNumeric(mixed $value): mixed
     {
-        // Check for null or empty string
         if (is_null($value) || $value === '') {
             return null;
         }
 
-        // Return immediately if already numeric
-        if (is_numeric($value)) {
+        if (is_int($value) || is_float($value)) {
             return $value;
         }
 
-        // Process string representations
-        if (is_string($value)) {
-            $value = trim($value);
-            
-            // Remove thousands separators (spaces, commas)
-            $value = str_replace([' ', ','], '', $value);
-            
-            // Normalize decimal comma to dot
-            $value = str_replace(',', '.', $value);
-            
-            // Strip currency symbols and extra non-numeric characters
-            $value = preg_replace('/[^0-9.\-+]/', '', $value);
-            
-            // Verify if sanitized string is numeric
-            if (is_numeric($value)) {
-                return $value;
-            }
+        if (!is_string($value)) {   // tableaux, objets, booléens
+            return null;
         }
 
-        return null;
+        $value = trim($value);
+
+        // Séparateurs de milliers (espaces) ; virgule seule = séparateur décimal
+        $value = str_replace(' ', '', $value);
+        $value = str_replace(',', '.', $value);
+
+        // Symboles monétaires et caractères parasites
+        $value = preg_replace('/[^0-9.\-+eE]/', '', $value);
+
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        return $value + 0;   // '12.0' => 12.0 (float), '42' => 42 (int)
     }
 
     /**
@@ -201,7 +197,7 @@ class NumericValidator extends NumberValidator
 
         switch ($format) {
             case 'integer':
-                if (!is_int($value) && !ctype_digit((string) $value)) {
+                if (!is_int($value) || !(is_float($value) && floor($value) === $value)) {
                     $this->addError("The number must be an integer.");
                     return false;
                 }
@@ -269,7 +265,7 @@ class NumericValidator extends NumberValidator
     {
         $precision = $this->options['precision'] ?? null;
 
-        if (!$precision) {
+        if ($precision === null) {   // et non !$precision, pour que precision:0 soit appliquée
             return true;
         }
 
@@ -277,17 +273,30 @@ class NumericValidator extends NumberValidator
             return false;
         }
 
-        // Extract decimal places
-        $number = (string) $value;
-        $parts = explode('.', $number);
-        $decimals = isset($parts[1]) ? strlen($parts[1]) : 0;
-
-        if ($decimals > $precision) {
+        if ($this->countDecimals($value) > $precision) {
             $this->addError("The number must not have more than {$precision} decimal place(s).");
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Counts significant decimal places, independent of PHP's float-to-string format.
+     */
+    private function countDecimals(int|float|string $value): int
+    {
+        if (is_int($value)) {
+            return 0;
+        }
+
+        // Fixed-point notation (no exponent), 15 digits ≈ float precision limit
+        $fixed = number_format((float) $value, 15, '.', '');
+        $fixed = rtrim($fixed, '0');   // trailing zeros and float noise
+
+        $dot = strpos($fixed, '.');
+
+        return $dot === false ? 0 : strlen($fixed) - $dot - 1;
     }
 
     /**
@@ -340,18 +349,6 @@ class NumericValidator extends NumberValidator
         }
 
         return $value;
-    }
-
-    /**
-     * Appends an error message to internal errors array and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

@@ -129,60 +129,67 @@ class EmailValidator extends Rule
      */
     public function validate(mixed &$email): bool
     {
-        $email = $this->parseString($email);
+        $input = $this->normalizeEmail($email);
 
-        if (empty($email)) {
+        if ($input === '') {
             $this->addError('The email address is required.');
             return false;
         }
 
         // 1. Format validation
-        if (!$this->validateFormat($email)) {
-            $this->addError($this->getErrorMessage($email, 'format'));
+        if (!$this->validateFormat($input)) {
+            $this->addError($this->getErrorMessage($input, 'format'));
             return false;
         }
 
-        // 2. Domain checks (MX / DNS)
-        $domain = substr($email, strrpos($email, '@') + 1);
+        // 2. Domain checks (MX / DNS), domaine en minuscules
+        $domain = strtolower(substr($input, strrpos($input, '@') + 1));
 
-        if (isset($this->options['mx']) && $this->options['mx'] === true) {
-            if (!$this->validateMX($domain)) {
-                $this->addError("The domain '{$domain}' does not have valid mail server (MX) records.");
-                return false;
-            }
+        if (($this->options['mx'] ?? false) === true && !$this->validateMX($domain)) {
+            $this->addError("The domain '{$domain}' does not have valid mail server (MX) records.");
+            return false;
         }
 
-        if (isset($this->options['dns']) && $this->options['dns'] === true) {
-            if (!$this->validateDNS($domain)) {
-                $this->addError("The domain '{$domain}' is invalid or unresolvable.");
-                return false;
-            }
+        if (($this->options['dns'] ?? false) === true && !$this->validateDNS($domain)) {
+            $this->addError("The domain '{$domain}' is invalid or unresolvable.");
+            return false;
         }
 
-        // 3. Blocked domains check
-        if ($blocked = $this->options['block'] ?? []) {
+        // 3. Blocked domains
+        if ($blocked = $this->normalizeDomains($this->options['block'] ?? [])) {
             if (in_array($domain, $blocked, true)) {
                 $this->addError("The domain '{$domain}' is not allowed.");
                 return false;
             }
         }
 
-        // 4. Allowed domains check
-        if ($allowed = $this->options['only'] ?? []) {
+        // 4. Allowed domains
+        if ($allowed = $this->normalizeDomains($this->options['only'] ?? [])) {
             if (!in_array($domain, $allowed, true)) {
                 $this->addError("Only the following domains are allowed: " . implode(', ', $allowed));
                 return false;
             }
         }
 
-        // 5. Database uniqueness validation
-        if ($this->options['unique'] ?? false) {
-            if (!$this->validateUnique($email)) {
-                return false;
-            }
+        // 5. Uniqueness
+        if (($this->options['unique'] ?? false) && !$this->validateUnique($input)) {
+            return false;
         }
 
+        $email = $input;   // modifié uniquement en cas de succès
+
         return true;
+    }
+
+    private function normalizeEmail(mixed $email): string
+    {
+        return is_string($email) ? trim($email) : '';
+    }
+
+    /** @param array<int, string> $domains */
+    private function normalizeDomains(array $domains): array
+    {
+        return array_map(fn(string $d) => strtolower(trim($d)), $domains);
     }
 
     /**
@@ -254,18 +261,6 @@ class EmailValidator extends Rule
             $this->addError("Error checking email uniqueness: " . $e->getMessage());
             return false;
         }
-    }
-
-    /**
-     * Registers a new error message and logs it to system logs.
-     *
-     * @param string $message The error message string.
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

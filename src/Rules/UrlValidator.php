@@ -399,18 +399,6 @@ class UrlValidator extends Rule
     }
 
     /**
-     * Log and track error message.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Retrieves primary error message for presentation.
      *
      * @return string|null

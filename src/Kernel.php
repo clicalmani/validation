@@ -1,6 +1,12 @@
 <?php
 namespace Clicalmani\Validation;
 
+/**
+ * Kernel class
+ * 
+ * @package Clicalmani\Validation
+ * @author  Clément Clicalmani <
+ */
 class Kernel {
 
     /**
@@ -23,6 +29,7 @@ class Kernel {
             \Clicalmani\Validation\Rules\IDsValidator::class,
             \Clicalmani\Validation\Rules\IntValidator::class,
             \Clicalmani\Validation\Rules\IntegerValidator::class,
+            \Clicalmani\Validation\Rules\NumValidator::class,
             \Clicalmani\Validation\Rules\NumberValidator::class,
             \Clicalmani\Validation\Rules\NumbersValidator::class,
             \Clicalmani\Validation\Rules\NumericValidator::class,

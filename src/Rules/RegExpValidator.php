@@ -274,18 +274,6 @@ class RegExpValidator extends Rule
     }
 
     /**
-     * Appends error message to tracking array and records log entry.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Resolves and returns validation error message with placeholder replacements.
      *
      * @return string|null

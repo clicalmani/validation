@@ -355,18 +355,6 @@ class NumberValidator extends Rule
     }
 
     /**
-     * Appends an error message to internal tracking array and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Resolves and returns the validation error message with populated placeholders.
      *
      * @return string|null

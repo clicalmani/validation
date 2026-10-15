@@ -2,7 +2,6 @@
 
 namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Validation\Rule;
 use Clicalmani\Validation\Rules\Traits\ValidatesFormatString;
 use Clicalmani\Validation\ValidatesOption;
 use DateTime;
@@ -25,7 +24,7 @@ use function Clicalmani\Validation\validateFormatString;
  * @package Clicalmani\Validation\Rules
  * @author clicalmani
  */
-class DateTimeValidator extends Rule
+class DateTimeValidator extends DateBase
 {
     use ValidatesOption;
 
@@ -42,13 +41,6 @@ class DateTimeValidator extends Rule
      * @var array<int, string>
      */
     protected array $errors = [];
-
-    /**
-     * Parsed DateTime instance generated upon successful validation.
-     *
-     * @var DateTime|null
-     */
-    protected ?DateTime $parsedDateTime = null;
 
     /**
      * The exact format string that successfully parsed the input payload.
@@ -83,7 +75,7 @@ class DateTimeValidator extends Rule
             'formats' => [
                 'required' => false,
                 'type' => 'array',
-                'function' => fn(string $value) => array_map('trim', explode('|', $value))
+                'function' => fn(string $value) => array_map('trim', explode(';', $value))
             ],
             
             // Minimum allowed date/time boundary (absolute or relative)
@@ -137,143 +129,33 @@ class DateTimeValidator extends Rule
      */
     public function validate(mixed &$dateTime): bool
     {
-        // 1. Input normalization
-        $dateTime = $this->normalizeDateTime($dateTime);
-        
-        if ($dateTime === null) {
+        $this->parsedDate = null;
+        $this->validFormat = null;
+
+        // Travailler sur une copie : $dateTime n'est modifié qu'en cas de succès
+        $input = $this->normalizeDateTime($dateTime);
+
+        if ($input === null) {
             $this->addError("The provided date/time is invalid or empty.");
             return false;
         }
 
-        // 2. Relative date/time evaluation
-        if ($this->options['relative'] ?? false) {
-            if ($this->isRelativeDateTime($dateTime)) {
-                return $this->validateRelativeDateTime($dateTime);
-            }
-        }
-
-        // 3. Format validation
-        if (!$this->validateFormat($dateTime)) {
-            return false;
-        }
-
-        // 4. Strict consistency check
-        if ($this->options['strict'] ?? true) {
-            if (!$this->validateStrict($dateTime)) {
+        if (($this->options['relative'] ?? false) && $this->isRelativeDate($input)) {
+            if (!$this->validateRelativeDateTime($input)) {
                 return false;
             }
-        }
-
-        // 5. Min/Max range bounds check
-        if (!$this->validateRange($dateTime)) {
+        } elseif (!$this->validateFormat($input, $this->options['strict'] ?? true)) {
             return false;
         }
 
-        // 6. Mutate input payload to standardized date/time string
-        if ($this->parsedDateTime) {
-            $dateTime = $this->parsedDateTime->format($this->validFormat ?? 'Y-m-d H:i:s');
-        }
-
-        return true;
-    }
-
-    /**
-     * Normalizes heterogeneous inputs into a clean string representation.
-     *
-     * @param mixed $dateTime Input value (timestamp, DateTime object, or string).
-     * @return string|null Standardized string or `null` on invalid types.
-     */
-    private function normalizeDateTime(mixed $dateTime): ?string
-    {
-        if (is_null($dateTime)) {
-            return null;
-        }
-
-        if (is_int($dateTime) || is_float($dateTime)) {
-            return date('Y-m-d H:i:s', (int) $dateTime);
-        }
-
-        if ($dateTime instanceof DateTime) {
-            return $dateTime->format('Y-m-d H:i:s');
-        }
-
-        if (is_string($dateTime)) {
-            return trim($dateTime);
-        }
-
-        return null;
-    }
-
-    /**
-     * Validates the date/time format against candidate schemas.
-     *
-     * @param string &$dateTime Target input string.
-     * @return bool
-     */
-    private function validateFormat(string &$dateTime): bool
-    {
-        $formats = $this->getFormats();
-        $timezone = $this->options['timezone'] ?? config('app.timezone');
-        $parsed = false;
-
-        foreach ($formats as $format) {
-            try {
-                $dt = DateTime::createFromFormat($format, $dateTime, new DateTimeZone($timezone));
-                
-                if ($dt !== false) {
-                    $errors = DateTime::getLastErrors();
-                    if ($errors && $errors['warning_count'] === 0 && $errors['error_count'] === 0) {
-                        // Ensure exact output format match to prevent loose parsing
-                        $test = $dt->format($format);
-                        if ($test === $dateTime) {
-                            $this->parsedDateTime = $dt;
-                            $this->validFormat = $format;
-                            $parsed = true;
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception $e) {
-                continue;
-            }
-        }
-
-        if (!$parsed) {
-            $this->addError($this->getFormatErrorMessage($dateTime, $formats));
+        // Les bornes s'appliquent aussi aux expressions relatives
+        if (!$this->validateRange()) {
             return false;
         }
 
+        $dateTime = $this->parsedDate->format($this->validFormat ?? 'Y-m-d H:i:s');
+
         return true;
-    }
-
-    /**
-     * Resolves candidate date/time formats to evaluate.
-     *
-     * @return array<int, string>
-     */
-    private function getFormats(): array
-    {
-        if (!empty($this->options['formats'])) {
-            return $this->options['formats'];
-        }
-
-        $format = $this->options['format'] ?? 'Y-m-d H:i:s';
-        
-        // Predefined fallback format configurations
-        $commonFormats = [
-            'Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d',
-            'd/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y',
-            'm/d/Y H:i:s', 'm/d/Y H:i', 'm/d/Y',
-            'Y-m-d\TH:i:s', 'Y-m-d\TH:i:sP',
-            'd-m-Y H:i:s', 'm-d-Y H:i:s',
-            'Y-m-d H:i:s.u', 'Y-m-d H:i:sP'
-        ];
-
-        if (in_array($format, $commonFormats, true)) {
-            return $commonFormats;
-        }
-
-        return [$format];
     }
 
     /**
@@ -284,11 +166,11 @@ class DateTimeValidator extends Rule
      */
     private function validateStrict(string $dateTime): bool
     {
-        if (!$this->parsedDateTime) {
+        if (!$this->parsedDate) {
             return false;
         }
 
-        $parsedString = $this->parsedDateTime->format($this->validFormat ?? 'Y-m-d H:i:s');
+        $parsedString = $this->parsedDate->format($this->validFormat ?? 'Y-m-d H:i:s');
         
         if ($parsedString !== $dateTime && !$this->isFormatEquivalent($dateTime, $parsedString)) {
             $this->addError("The date/time '{$dateTime}' is invalid.");
@@ -296,113 +178,6 @@ class DateTimeValidator extends Rule
         }
 
         return true;
-    }
-
-    /**
-     * Evaluates minimum and maximum range boundaries.
-     *
-     * @param string $dateTime Raw input value.
-     * @return bool
-     */
-    private function validateRange(string $dateTime): bool
-    {
-        if (!$this->parsedDateTime) {
-            return false;
-        }
-
-        // Min boundary check
-        if ($min = $this->options['min'] ?? null) {
-            $minDate = $this->parseDateTimeRange($min);
-            if ($minDate && $this->parsedDateTime < $minDate) {
-                $this->addError("The date/time must be after " . $minDate->format('Y-m-d H:i:s'));
-                return false;
-            }
-        }
-
-        // Max boundary check
-        if ($max = $this->options['max'] ?? null) {
-            $maxDate = $this->parseDateTimeRange($max);
-            if ($maxDate && $this->parsedDateTime > $maxDate) {
-                $this->addError("The date/time must be before " . $maxDate->format('Y-m-d H:i:s'));
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Parses absolute or relative range boundary strings into DateTime instances.
-     *
-     * @param string $value Expression string (e.g., '2026-01-01 00:00:00', '+1 day', 'now').
-     * @return DateTime|null
-     */
-    private function parseDateTimeRange(string $value): ?DateTime
-    {
-        try {
-            if (str_starts_with($value, '+') || str_starts_with($value, '-') || $value === 'now') {
-                return new DateTime($value);
-            }
-            
-            $formats = $this->getFormats();
-            foreach ($formats as $format) {
-                $dt = DateTime::createFromFormat($format, $value);
-                if ($dt !== false) {
-                    return $dt;
-                }
-            }
-            
-            return new DateTime($value);
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Determines whether an input string matches relative syntax patterns.
-     *
-     * @param string $dateTime Candidate expression.
-     * @return bool
-     */
-    private function isRelativeDateTime(string $dateTime): bool
-    {
-        $relativePatterns = [
-            '/^now$/i',
-            '/^today$/i',
-            '/^yesterday$/i',
-            '/^tomorrow$/i',
-            '/^[+-]\d+\s+(second|minute|hour|day|week|month|year)s?$/i',
-            '/^next\s+(day|week|month|year)$/i',
-            '/^last\s+(day|week|month|year)$/i'
-        ];
-
-        foreach ($relativePatterns as $pattern) {
-            if (preg_match($pattern, $dateTime)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Evaluates a relative date expression into a standard DateTime representation.
-     *
-     * @param string &$dateTime Target relative string.
-     * @return bool
-     */
-    private function validateRelativeDateTime(string &$dateTime): bool
-    {
-        try {
-            $dt = new DateTime($dateTime);
-            $this->parsedDateTime = $dt;
-            $this->validFormat = 'Y-m-d H:i:s';
-            $dateTime = $dt->format('Y-m-d H:i:s');
-            return true;
-        } catch (Exception $e) {
-            $this->addError("The relative date/time '{$dateTime}' is invalid.");
-            return false;
-        }
     }
 
     /**
@@ -417,18 +192,6 @@ class DateTimeValidator extends Rule
         $clean1 = preg_replace('/[^0-9]/', '', $datetime1);
         $clean2 = preg_replace('/[^0-9]/', '', $datetime2);
         return $clean1 === $clean2;
-    }
-
-    /**
-     * Appends an error message to the internal list and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**
@@ -478,8 +241,71 @@ class DateTimeValidator extends Rule
      *
      * @return DateTime|null
      */
-    public function getParsedDateTime(): ?DateTime
+    public function getparsedDate(): ?DateTime
     {
-        return $this->parsedDateTime;
+        return $this->parsedDate;
+    }
+
+    private function normalizeDateTime(mixed $dateTime): ?string
+    {
+        if (is_int($dateTime) || is_float($dateTime)) {
+            // Interpréter le timestamp dans le fuseau configuré, pas dans celui de date()
+            return (new DateTime('@' . (int) $dateTime))
+                ->setTimezone($this->timezone())
+                ->format('Y-m-d H:i:s');
+        }
+
+        if ($dateTime instanceof \DateTimeInterface) {
+            return $dateTime->format('Y-m-d H:i:s');
+        }
+
+        return is_string($dateTime) ? trim($dateTime) : null;
+    }
+
+    private function validateFormat(string $dateTime, bool $strict): bool
+    {
+        $formats = $this->getFormats();
+        $timezone = $this->timezone();
+
+        foreach ($formats as $format) {
+            // '!' remet les champs non parsés à l'epoch (sinon 'Y-m-d' reçoit l'heure courante)
+            $dt = DateTime::createFromFormat('!' . $format, $dateTime, $timezone);
+
+            if ($dt === false) {
+                continue;
+            }
+
+            // PHP >= 8.2 : false quand il n'y a rien à signaler
+            $errors = DateTime::getLastErrors() ?: ['warning_count' => 0, 'error_count' => 0];
+
+            if ($errors['error_count'] > 0) {
+                continue;
+            }
+
+            // Mode strict : pas de débordement (30 février) et aller-retour identique
+            if ($strict && ($errors['warning_count'] > 0 || $dt->format($format) !== $dateTime)) {
+                continue;
+            }
+
+            $this->parsedDate = $dt;
+            $this->validFormat = $format;
+
+            return true;
+        }
+
+        $this->addError($this->getFormatErrorMessage($dateTime, $formats));
+        return false;
+    }
+
+    private function validateRelativeDateTime(string $dateTime): bool
+    {
+        try {
+            $this->parsedDate = new DateTime($dateTime, $this->timezone());
+            $this->validFormat = 'Y-m-d H:i:s';
+            return true;
+        } catch (Exception $e) {
+            $this->addError("The relative date/time '{$dateTime}' is invalid.");
+            return false;
+        }
     }
 }

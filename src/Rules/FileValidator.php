@@ -501,18 +501,6 @@ class FileValidator extends Rule
     }
 
     /**
-     * Records error message to local stack and logs message.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Returns formatted error message replacing placeholders if customized.
      *
      * @return string|null

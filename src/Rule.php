@@ -1,25 +1,25 @@
 <?php
 namespace Clicalmani\Validation;
 
+use Clicalmani\Core\Http\Request;
 use Clicalmani\Core\Support\Facades\Log;
 use Clicalmani\Validation\Exceptions\ValidationException;
 
+/**
+ * Rule class
+ * 
+ * @package Clicalmani\Validation
+ * @author  Clément Clicalmani <
+ */
 class Rule extends InputParser implements RuleInterface
 {
-    protected array $options;
+    protected array $options = [];
 
-    /**
-     * Validator argument
-     * 
-     * @var string
-     */
+    /** @var string[] */
+    protected array $errors = [];
+
     protected static string $argument = '';
 
-    /**
-     * Default validation arguments
-     * 
-     * @var string[]
-     */
     const DEFAULT_ARGUMENTS = ['required', 'nullable', 'sometimes', 'hash', 'confirmed'];
 
     public function __construct(protected ?string $parameter = null, protected string $pattern = '')
@@ -27,130 +27,134 @@ class Rule extends InputParser implements RuleInterface
         //
     }
 
-    /**
-     * Gets the rule argument.
-     * 
-     * @return string
-     */
-    public static function getArgument() : string
+    public static function getArgument() : string { return static::$argument; }
+    public static function getDefaultArguments() : array { return static::DEFAULT_ARGUMENTS; }
+
+    public function options(): array { return []; }
+
+    /** Options communes à toutes les règles. */
+    protected function commonOptions(): array
     {
-        return static::$argument;
+        return ['message' => ['required' => false, 'type' => 'string']];
     }
 
-    public static function getDefaultArguments() : array
-    {
-        return static::DEFAULT_ARGUMENTS;
-    }
+    /** Placeholders supplémentaires ({min}, {formats}…) pour les messages. */
+    protected function placeholders(): array { return []; }
 
-    public function options(): array
+    /** Accès à une option résolue (après checkOptions). */
+    public function option(string $key, mixed $default = null): mixed
     {
-        return [
-            // ...
-        ];
+        return $this->options[$key] ?? $default;
     }
 
     public function validate(mixed &$value): bool
     {
-        throw new ValidationException(
-            sprintf("%s must override the validate method", $this::class)
-        );
+        throw new ValidationException(sprintf("%s must override the validate method", $this::class));
     }
 
-    /**
-     * Gets the custom error message.
-     * 
-     * @return string
-     */
-    public function message() : ?string
-    {
-        return null;
-    }
-
-    public function isRequired() : bool
-    {
-        return $this->hasArgument('required');
-    }
-
-    public function isNullable() : bool
-    {
-        return $this->hasArgument('nullable');
-    }
-
-    public function isSometimes() : bool
-    {
-        return $this->hasArgument('sometimes');
-    }
-
-    public function isHash() : bool
-    {
-        return $this->hasArgument('hash');
-    }
-
-    public function isConfirmed() : bool
-    {
-        return $this->hasArgument('confirmed');
-    }
+    public function isRequired() : bool   { return $this->hasArgument('required'); }
+    public function isNullable() : bool   { return $this->hasArgument('nullable'); }
+    public function isSometimes() : bool  { return $this->hasArgument('sometimes'); }
+    public function isHash() : bool       { return $this->hasArgument('hash'); }
+    public function isConfirmed() : bool  { return $this->hasArgument('confirmed'); }
 
     protected function hasArgument(string $argument) : bool
     {
         return Validator::getArguments($this->pattern)->contains($argument);
     }
 
+    /**
+     * @throws ValidationException
+     */
     public function checkOptions() : bool
     {
-        $old_error_level = Validator::getErrorLevel();
-        Validator::setErrorLevel(Validator::ERROR_THROW); // Set validation error level to high
         $this->options = Validator::getArgumentOptions($this->pattern);
-        $options = $this->options();
-        
-        foreach ($this->options as $key => $value) {
-            if (!isset($options[$key])) {
-                $this->log(sprintf("%s is not a valid %s rule option; expected [%s] options, got %s", $key, static::$argument, join(',', array_keys($options)), $key));
+        $definitions   = $this->options() + $this->commonOptions();
+        $rule          = static::$argument;
+
+        foreach (array_keys($this->options) as $key) {
+            if (!array_key_exists($key, $definitions)) {
+                throw new ValidationException(sprintf(
+                    "%s is not a valid %s rule option; expected [%s] options, got %s",
+                    $key, $rule, join(',', array_keys($definitions)), $key
+                ));
             }
         }
-        
-        foreach ($options as $key => $value) {
-            if (isset($this->options[$key])) {
-                $option = new RuleOption(
-                    $key, 
-                    $this->options[$key],
-                    $value['required'] ?? null,
-                    $value['type'] ?? null,
-                    $value['keys'] ?? [],
-                    $value['function'] ?? $value['func'] ?? null,
-                    $value['validator'] ?? null,
-                    $value['default'] ?? null
-                );
-                
-                try {
-                    $option->validate();
-                } catch (ValidationException $e) {
-                    $this->log(sprintf($e->getMessage(), static::$argument));
-                }
+
+        foreach ($definitions as $key => $definition) {
+            $provided = array_key_exists($key, $this->options);
+
+            if (!$provided && !array_key_exists('default', $definition) && empty($definition['required'])) {
+                continue;
             }
+
+            $value = $this->options[$key] ?? null;
+
+            // Drapeau booléen fourni sans valeur ("strict") => "strict:true".
+            // Uniquement si l'option est présente : absente, on veut le défaut.
+            if ($provided && $value === null && ($definition['type'] ?? null) === 'bool') {
+                $value = 'true';
+            }
+
+            (new RuleOption(
+                $key,
+                $value,
+                $definition['required'] ?? null,
+                $definition['type'] ?? null,
+                $definition['keys'] ?? [],
+                $definition['function'] ?? $definition['func'] ?? null,
+                $definition['validator'] ?? null,
+                $definition['default'] ?? null,
+                $rule
+            ))->validate();
+
+            $this->options[$key] = $value;
         }
-        
-        Validator::setErrorLevel($old_error_level);
 
         return true;
     }
 
+    /**
+     * Enregistre une erreur de validation de la valeur.
+     * L'option `message` prime ; {param}, {value} et placeholders() sont substitués.
+     */
+    protected function addError(string $message, mixed $value = null): void
+    {
+        $message = $this->options['message'] ?? $message;
+
+        $message = strtr($message, [
+            '{param}' => (string) $this->parameter,
+            '{value}' => is_scalar($value) ? (string) $value : gettype($value),
+        ] + $this->placeholders());
+
+        $this->errors[] = $message;
+        $this->log($message);
+    }
+
+    public function getErrors(): array { return $this->errors; }
+
+    public function message() : ?string { return $this->errors[0] ?? null; }
+
+    /** Échappe un identifiant SQL (nom de colonne) interpolé dans une requête. */
+    protected function quoteIdentifier(string $identifier): string
+    {
+        return '`' . str_replace('`', '``', $identifier) . '`';
+    }
+
     public function log(?string $message = null) : void
     {
-        $message = $this->message() ?: $message;
-
-        if (\Clicalmani\Core\Http\Request::current()?->hasHeader('X-Inertia')) {
+        if (Request::current()?->hasHeader('X-Inertia')) {
             \Inertia\ComponentData::addError($this->parameter, $message);
             die(back());
-        } else {
-            switch (Validator::getErrorLevel()) {
-                case Validator::ERROR_SILENCE: Validator::addError($this->parameter, $message); break;
-                case Validator::ERROR_WARNING: 
-                    Validator::addError($this->parameter, $message);
-                    Log::warning($message, self::class, __LINE__); 
-                    break;
-                case Validator::ERROR_THROW: throw new ValidationException($message); break;
-            }
+        }
+
+        switch (Validator::getErrorLevel()) {
+            case Validator::ERROR_SILENCE: Validator::addError($this->parameter, $message); break;
+            case Validator::ERROR_WARNING:
+                Validator::addError($this->parameter, $message);
+                Log::warning($message, self::class, __LINE__);
+                break;
+            case Validator::ERROR_THROW: throw new ValidationException($message);
         }
     }
 }

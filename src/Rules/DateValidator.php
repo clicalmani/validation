@@ -2,7 +2,6 @@
 
 namespace Clicalmani\Validation\Rules;
 
-use Clicalmani\Validation\Rule;
 use Clicalmani\Validation\Rules\Traits\ValidatesFormatString;
 use Clicalmani\Validation\ValidatesOption;
 use DateTime;
@@ -24,7 +23,7 @@ use function Clicalmani\Validation\validateFormatString;
  * @package Clicalmani\Validation\Rules
  * @author clicalmani
  */
-class DateValidator extends Rule
+class DateValidator extends DateBase
 {
     use ValidatesOption;
 
@@ -136,40 +135,36 @@ class DateValidator extends Rule
      */
     public function validate(mixed &$date): bool
     {
-        // 1. Input normalization
         $date = $this->normalizeDate($date);
-        
+
         if ($date === null) {
             $this->addError("The provided date is invalid or empty.");
             return false;
         }
 
-        // 2. Relative date processing
-        if ($this->options['relative'] ?? false) {
-            if ($this->isRelativeDate($date)) {
-                return $this->validateRelativeDate($date);
+        $strict = $this->options['strict'] ?? true;
+
+        if (($this->options['relative'] ?? false) && $this->isRelativeDate($date)) {
+            if (!$this->validateRelativeDate($date)) {
+                return false;
             }
+            // Relative dates must still honor min/max
+            return $this->validateRange($date);
         }
 
-        // 3. Format matching
-        if (!$this->validateFormat($date)) {
+        if (!$this->validateFormat($date, $strict)) {
             return false;
         }
 
-        // 4. Calendar strictness check (month/day boundary validation)
-        if ($this->options['strict'] ?? true) {
-            if (!$this->validateStrict($date)) {
-                return false;
-            }
+        if ($strict && !$this->validateStrict($date)) {
+            return false;
         }
 
-        // 5. Min/Max range bounds check
         if (!$this->validateRange($date)) {
             return false;
         }
 
-        // 6. Mutate input payload to standardized date string
-        $date = $this->parsedDate?->format($this->validFormat ?? 'Y-m-d') ?? $date;
+        $this->parsedDate && $date = $this->parsedDate->format($this->validFormat ?? 'Y-m-d');
 
         return true;
     }
@@ -207,7 +202,7 @@ class DateValidator extends Rule
      * @param string &$date Target date string.
      * @return bool `true` if a format matched strictly without warnings, `false` otherwise.
      */
-    private function validateFormat(string &$date): bool
+    private function validateFormat(string &$date, bool $strict = true): bool
     {
         $formats = $this->getFormats();
         $timezone = $this->options['timezone'] ?? config('app.timezone');
@@ -216,15 +211,20 @@ class DateValidator extends Rule
         foreach ($formats as $format) {
             try {
                 $dt = DateTime::createFromFormat($format, $date, new DateTimeZone($timezone));
-                
-                if ($dt !== false) {
-                    $errors = DateTime::getLastErrors();
-                    if (!$errors || (@$errors['warning_count'] === 0 && @$errors['error_count'] === 0)) {
-                        $this->parsedDate = $dt;
-                        $this->validFormat = $format;
-                        $parsed = true;
-                        break;
-                    }
+                if ($dt === false) {
+                    continue;
+                }
+
+                $errors = DateTime::getLastErrors();
+                $errorCount   = $errors['error_count']   ?? 0;
+                $warningCount = $errors['warning_count'] ?? 0;
+
+                // Hard parse errors always fail; warnings (rollover) only fail in strict mode
+                if ($errorCount === 0 && (!$strict || $warningCount === 0)) {
+                    $this->parsedDate = $dt;
+                    $this->validFormat = $format;
+                    $parsed = true;
+                    break;
                 }
             } catch (Exception $e) {
                 continue;
@@ -237,19 +237,6 @@ class DateValidator extends Rule
         }
 
         return true;
-    }
-
-    /**
-     * Resolves candidate date formats to test during format validation.
-     *
-     * @return array<int, string>
-     */
-    private function getFormats(): array
-    {
-        if (!empty($this->options['formats'])) {
-            return $this->options['formats'];
-        }
-        return [$this->options['format'] ?? 'Y-m-d'];
     }
 
     /**
@@ -272,93 +259,6 @@ class DateValidator extends Rule
         }
 
         return true;
-    }
-
-    /**
-     * Evaluates minimum and maximum allowed range boundaries.
-     *
-     * @param string $date Target date string.
-     * @return bool
-     */
-    private function validateRange(string $date): bool
-    {
-        if (!$this->parsedDate) {
-            return false;
-        }
-
-        // Min boundary
-        if ($min = $this->options['min'] ?? null) {
-            $minDate = $this->parseDateRange($min);
-            if ($minDate && $this->parsedDate < $minDate) {
-                $this->addError("The date must be after " . $minDate->format('Y-m-d'));
-                return false;
-            }
-        }
-
-        // Max boundary
-        if ($max = $this->options['max'] ?? null) {
-            $maxDate = $this->parseDateRange($max);
-            if ($maxDate && $this->parsedDate > $maxDate) {
-                $this->addError("The date must be before " . $maxDate->format('Y-m-d'));
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Converts absolute or relative boundary strings into DateTime instances.
-     *
-     * @param string $value Boundary expression (e.g., '2026-01-01', '+1 week', 'now').
-     * @return DateTime|null
-     */
-    private function parseDateRange(string $value): ?DateTime
-    {
-        try {
-            if (str_starts_with($value, '+') || str_starts_with($value, '-') || $value === 'now') {
-                return new DateTime($value);
-            }
-            
-            $formats = $this->getFormats();
-            foreach ($formats as $format) {
-                $dt = DateTime::createFromFormat($format, $value);
-                if ($dt !== false) {
-                    return $dt;
-                }
-            }
-            
-            return new DateTime($value);
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Checks if a given input string matches common relative date syntax patterns.
-     *
-     * @param string $date Candidate expression string.
-     * @return bool
-     */
-    private function isRelativeDate(string $date): bool
-    {
-        $relativePatterns = [
-            '/^now$/i',
-            '/^today$/i',
-            '/^yesterday$/i',
-            '/^tomorrow$/i',
-            '/^[+-]\d+\s+(day|week|month|year)s?$/i',
-            '/^next\s+(day|week|month|year)$/i',
-            '/^last\s+(day|week|month|year)$/i'
-        ];
-
-        foreach ($relativePatterns as $pattern) {
-            if (preg_match($pattern, $date)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -393,18 +293,6 @@ class DateValidator extends Rule
         $clean1 = preg_replace('/[^0-9]/', '', $date1);
         $clean2 = preg_replace('/[^0-9]/', '', $date2);
         return $clean1 === $clean2;
-    }
-
-    /**
-     * Appends an error message to the internal collection and logs it.
-     *
-     * @param string $message Error message string.
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

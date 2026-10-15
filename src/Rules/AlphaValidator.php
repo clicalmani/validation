@@ -253,18 +253,6 @@ class AlphaValidator extends StringValidator
     }
 
     /**
-     * Records a validation error and logs it internally.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Generates a human-readable primary error message, substituting parameter placeholders.
      *
      * @return string|null

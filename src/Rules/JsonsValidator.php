@@ -327,18 +327,6 @@ class JsonsValidator extends JsonValidator
     }
 
     /**
-     * Appends an error message to internal errors array and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Formats and returns the primary validation error message.
      *
      * @return string|null

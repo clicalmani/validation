@@ -432,18 +432,6 @@ class PDFValidator extends FileValidator
     }
 
     /**
-     * Appends error message to internal stack and triggers logger.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Returns primary validation message with formatted placeholders replaced.
      *
      * @return string|null

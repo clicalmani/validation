@@ -158,53 +158,43 @@ class PasswordValidator extends Rule
      */
     public function validate(mixed &$value): bool
     {
-        $value = $this->parseString($value);
-        
-        // 1. Data type check
         if (!is_string($value)) {
             $this->addError("The password must be a string.");
             return false;
         }
 
-        // 2. Length check
-        if (!$this->validateLength($value)) {
+        $password = $value;
+
+        // 1. Longueur
+        if (!$this->validateLength($password)) {
             return false;
         }
 
-        // 3. Space prohibition check
-        if (isset($this->options['noSpace']) &&  $this->options['noSpace'] === true) {
-            if (str_contains($value, ' ')) {
-                $this->addError("The password must not contain spaces.");
-                return false;
-            }
-        }
-
-        // 4. Consecutive repeated character check
-        if (!$this->validateRepeats($value)) {
+        // 2. Espaces
+        if (($this->options['noSpace'] ?? true) && str_contains($password, ' ')) {
+            $this->addError("The password must not contain spaces.");
             return false;
         }
 
-        // 5. Common password/sequence check
-        if (isset($this->options['common']) && $this->options['common'] === false) {
-            if ($this->isCommonPassword($value)) {
-                $this->addError("The password is too common. Please choose a more secure password.");
-                return false;
-            }
-        }
-
-        // 6. Character complexity check
-        if (!$this->validateComplexity($value)) {
+        // 3. Répétitions consécutives
+        if (!$this->validateRepeats($password)) {
             return false;
         }
 
-        // 7. Overall strength check
-        if (!$this->validateStrength($value)) {
+        // 4. Complexité
+        if (!$this->validateComplexity($password)) {
             return false;
         }
 
-        // 8. Truncation sanitization (if max defined)
-        if ($max = $this->options['max'] ?? null) {
-            $value = substr($value, 0, $max);
+        // 5. Mots de passe courants (activé par défaut, désactivable avec common:false)
+        if (($this->options['common'] ?? true) && $this->isCommonPassword($password)) {
+            $this->addError("The password is too common. Please choose a more secure password.");
+            return false;
+        }
+
+        // 6. Force globale
+        if (!$this->validateStrength($password)) {
+            return false;
         }
 
         return true;
@@ -416,18 +406,6 @@ class PasswordValidator extends Rule
         }
 
         return false;
-    }
-
-    /**
-     * Appends an error message to internal errors array and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

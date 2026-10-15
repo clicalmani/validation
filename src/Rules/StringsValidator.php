@@ -465,18 +465,6 @@ class StringsValidator extends Rule
     }
 
     /**
-     * Appends an error message to the local stack and log destination.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
-    }
-
-    /**
      * Retrieves primary user message for output presentation.
      *
      * @return string|null

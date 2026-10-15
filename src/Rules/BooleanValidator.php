@@ -88,27 +88,21 @@ class BooleanValidator extends Rule
     {
         $this->errors = [];
 
-        // 1. Handle null or empty string input values
         if ($value === null || $value === '') {
             if (array_key_exists('default', $this->options)) {
                 $value = (bool) $this->options['default'];
-                return true;
             }
-
             return true;
         }
 
-        // 2. Parse boolean representation
         $result = $this->parse($value);
 
         if ($result === null) {
-            $this->addError($this->getErrorMessage($value));
+            $this->addError("The value '{value}' is not a valid boolean. Allowed values: true, false, 1, 0, yes, no, on, off.", $value);
             return false;
         }
 
-        // 3. Update reference value with cast boolean result
         $value = $result;
-
         return true;
     }
 
@@ -120,35 +114,18 @@ class BooleanValidator extends Rule
      */
     private function parse(mixed $value): ?bool
     {
-        // Already a native boolean
-        if (is_bool($value)) {
-            return $value;
-        }
+        if (is_bool($value)) return $value;
+        if ($this->options['strict'] ?? false) return null;
 
-        // Reject non-booleans if strict mode is enabled
-        if ($this->options['strict'] ?? false) {
-            return null;
-        }
+        // Entiers : uniquement 0 / 1 (42 n'est pas un booléen de formulaire)
+        if (is_int($value)) return match ($value) { 1 => true, 0 => false, default => null };
 
-        // Numeric values (0 = false, non-zero = true)
-        if (is_numeric($value)) {
-            return (int) $value !== 0;
-        }
+        if (!is_string($value) || !($this->options['strings'] ?? true)) return null;
 
-        // String representations
-        if (is_string($value)) {
-            $value = strtolower(trim($value));
+        $value = strtolower(trim($value));
 
-            // Truthy equivalents
-            if (in_array($value, ['true', '1', 'yes', 'on', 'y', 't', 'ok', 'oui'], true)) {
-                return true;
-            }
-
-            // Falsy equivalents
-            if (in_array($value, ['false', '0', 'no', 'off', 'n', 'f', 'non', ''], true)) {
-                return false;
-            }
-        }
+        if (in_array($value, ['true', '1', 'yes', 'on', 'y', 't', 'ok', 'oui'], true)) return true;
+        if (in_array($value, ['false', '0', 'no', 'off', 'n', 'f', 'non'], true))     return false;
 
         return null;
     }
@@ -173,18 +150,6 @@ class BooleanValidator extends Rule
         }
 
         return "The value '{$valueStr}' is not a valid boolean. Allowed values: true, false, 1, 0, yes, no, on, off.";
-    }
-
-    /**
-     * Records a validation error and logs it.
-     *
-     * @param string $message
-     * @return void
-     */
-    private function addError(string $message): void
-    {
-        $this->errors[] = $message;
-        $this->log($message);
     }
 
     /**

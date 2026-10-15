@@ -1,162 +1,89 @@
 <?php
 namespace Clicalmani\Validation;
 
+/**
+ * InputParser class
+ * 
+ * @package Clicalmani\Validation
+ * @author  Clément Clicalmani <
+ */
 class InputParser
 {
-    /**
-     * Parse int
-     * 
-     * @param mixed $value
-     * @return int Parsed value
-     */
     public function parseInt(mixed $value) : int
     {
-        return (int) tap($value, fn($value) => settype($value, 'integer'));
+        if (is_int($value)) return $value;
+        if (!is_numeric($value)) {
+            throw new \InvalidArgumentException("Value must be numeric to parse as integer.");
+        }
+        return (int) $value;
     }
 
-    /**
-     * Parse float
-     * 
-     * @param mixed $value
-     * @return float Parsed value
-     */
     public function parseFloat(mixed $value) : float
     {
         if (!is_numeric($value)) {
             throw new \InvalidArgumentException("Value must be numeric to parse as float.");
         }
-        
-        return (float) tap($value, fn($value) => settype($value, 'double'));
+        return (float) $value;
     }
 
-    /**
-     * Parse boolean
-     * 
-     * @param mixed $value
-     * @return bool Parsed value
-     */
     public function parseBoolean(mixed $value) : bool
     {
-        if (!is_bool($value) && !is_numeric($value)) {
-            throw new \InvalidArgumentException("Value must be boolean or numeric to parse as boolean.");
-        }
+        if (is_bool($value)) return $value;
+        if ($value === null) return false;
 
-        if (is_null($value)) {
-            return false; // Default to false if null
-        }
+        $bool = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 
-        return tap($value, fn($value) => settype($value, 'boolean'));
+        if ($bool === null) {
+            throw new \InvalidArgumentException("Value must be boolean or boolean-like to parse as boolean.");
+        }
+        return $bool;
     }
 
-    /**
-     * Parse string
-     * 
-     * @param mixed $value
-     * @return string
-     */
     public function parseString(mixed $value) : string
     {
-        if (is_null($value)) {
-            return ''; // Default to empty string if null
-        }
-        
-        if (!is_scalar($value) && !is_string($value)) {
+        if ($value === null) return '';
+
+        if (!is_scalar($value) && !$value instanceof \Stringable) {
             throw new \InvalidArgumentException("Value must be scalar or string to parse as string.");
         }
-
-        // Convert to string and ensure type is set correctly
-        return tap((string)$value, fn(string $value) => settype($value, 'string'));
+        return (string) $value;
     }
 
-    /**
-     * Parse array
-     * 
-     * @param mixed $value
-     * @return array
-     */
     public function parseArray(mixed $value) : array
     {
-        if (is_array($value)) {
-            return $value;
-        }
-        if (is_null($value)) {
-            return [];
-        }
-        if (!is_string($value) && !is_object($value)) {
-            return (array)$value;
-        }
+        if (is_array($value)) return $value;
+        if ($value === null)  return [];
+
         if (is_string($value)) {
-            $value = json_decode($value, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return [];
-            }
+            $decoded = json_decode($value, true);
+            return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
         }
-        if (is_object($value)) {
-            $value = (array)$value;
-        }
-        if (!is_array($value)) {
-            return [];
-        }
-        // Ensure the value is an array
-        return tap($value, fn(&$value) => settype($value, 'array'));
+
+        return (array) $value;
     }
 
-    /**
-     * Parse object
-     * 
-     * @param mixed $value
-     * @return \stdClass
-     */
     public function parseObject(mixed $value) : \stdClass
     {
-        if (is_object($value)) {
-            return $value;
-        }
+        if ($value instanceof \stdClass) return $value;
+        if ($value === null) return new \stdClass();
 
-        if (is_null($value)) {
-            return new \stdClass(); // Default to empty object if null
-        }
-
-        if (is_array($value)) {
-            $value = (object)$value; // Convert array to object
-        } elseif (is_string($value)) {
+        if (is_string($value)) {
             $decoded = json_decode($value);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $value = $decoded; // Use decoded object if valid JSON
-            } else {
-                $value = new \stdClass(); // Default to empty object if JSON is invalid
-            }
-        } elseif (!is_object($value)) {
-            $value = (object)$value; // Convert other types to object
+            return (json_last_error() === JSON_ERROR_NONE && is_object($decoded)) ? $decoded : new \stdClass();
         }
 
-        if (!is_object($value)) {
-            throw new \InvalidArgumentException("Value must be an object, array, or string to parse as object.");
-        }
-        
-        // Ensure the value is an object
-        return tap($value, fn($value) => settype($value, 'object'));
+        return (object) $value;
     }
 
-    /**
-     * Cast
-     * 
-     * @param string $type
-     * @param mixed $value
-     * @return mixed
-     */
     public function cast(mixed $value, string $type) : mixed
     {
-        return match($type) {
-            'string' => $value = $this->parseString($value),
-            'int' => $value = $this->parseInt($value),
-            'integer' => $value = $this->parseInt($value),
-            'float' => $value = $this->parseFloat($value),
-            'bool' => $value = $this->parseBoolean($value),
-            'boolean' => $value = $this->parseBoolean($value),
-            'array' => $value = $this->parseArray($value),
-            'object' => $value = $this->parseObject($value),
-            default => $value = $this->parseString($value)
+        return match ($type) {
+            'int', 'integer'  => $this->parseInt($value),
+            'float', 'double' => $this->parseFloat($value),
+            'bool', 'boolean' => $this->parseBoolean($value),
+            'array'           => $this->parseArray($value),
+            'object'          => $this->parseObject($value),
+            default           => $this->parseString($value),
         };
     }
 }

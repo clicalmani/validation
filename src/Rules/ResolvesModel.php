@@ -14,6 +14,9 @@ use Clicalmani\Core\Filesystem\DirectoryScanner;
  *
  * Utilisé par les Rule de validation qui ont besoin de résoudre un modèle
  * à partir de son nom (IDValidator, EmailValidator, ...).
+ *
+ * @package Clicalmani\Validation
+ * @author  Clément Clicalmani <
  */
 trait ResolvesModel
 {
