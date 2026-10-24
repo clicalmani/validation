@@ -9,7 +9,7 @@ use Clicalmani\Validation\Exceptions\ValidationException;
  * Rule class
  * 
  * @package Clicalmani\Validation
- * @author  Clément Clicalmani <
+ * @author  Clément Clicalmani
  */
 class Rule extends InputParser implements RuleInterface
 {
@@ -143,15 +143,21 @@ class Rule extends InputParser implements RuleInterface
 
     public function log(?string $message = null) : void
     {
+        $errors = json_decode(session()->get('errors', '{}'), true);
+        
+        if ($request = Request::current() AND $errorBag = $request->getHeaderLine('X-Inertia-Error-Bag')) {
+            $errors[$errorBag][$this->parameter] = $message;
+        } else $errors[$this->parameter] = $message;
+        
+        session()->set('errors', json_encode($errors));
+        
         if (Request::current()?->hasHeader('X-Inertia')) {
-            \Inertia\ComponentData::addError($this->parameter, $message);
-            die(back());
+            return;
         }
 
         switch (Validator::getErrorLevel()) {
-            case Validator::ERROR_SILENCE: Validator::addError($this->parameter, $message); break;
+            case Validator::ERROR_SILENCE: break;
             case Validator::ERROR_WARNING:
-                Validator::addError($this->parameter, $message);
                 Log::warning($message, self::class, __LINE__);
                 break;
             case Validator::ERROR_THROW: throw new ValidationException($message);

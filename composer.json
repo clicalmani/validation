@@ -8,9 +8,11 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Clicalmani\\Validation\\": "src/",
-            "Validation\\Test\\": "src/tests/"
+            "Clicalmani\\Validation\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "Validation\\Test\\": "src/tests/"
     },
     "authors": [
         {

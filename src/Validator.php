@@ -41,11 +41,11 @@ class Validator
     public function sanitize(array &$inputs, array $patterns) : bool
     {
         $valid = true;
-
+        
         foreach ($patterns as $param => $pattern) {
-
+            
             if (in_array($param, static::$passed) || NULL === $rule = $this->getRule($pattern, $param)) continue;
-
+            
             // 1. Paramètre absent
             if (!array_key_exists($param, $inputs)) {
                 if ($rule->isRequired()) {
@@ -60,7 +60,7 @@ class Validator
             }
 
             $value = $inputs[$param];
-
+            
             // 2. nullable : null / chaîne vide => null ; sinon la valeur est validée normalement
             if ($rule->isNullable()) {
                 if ($value === null) continue;
@@ -83,10 +83,10 @@ class Validator
 
                 unset($inputs[$confirmed_param]);
             }
-
+            
             // 4. Validation de la règle
             if ($rule->getArgument() && $rule->checkOptions()) {
-
+                
                 if (!$rule->validate($value)) {
                     // La règle a normalement déjà enregistré son message : pas de doublon.
                     if (empty(static::$errors[$param])) {
@@ -95,13 +95,14 @@ class Validator
                     $valid = false;
                     continue;
                 }
-
+                
                 if (Request::current()?->hasHeader('X-Inertia')) {
                     static::$passed[] = $param;
                     session("errors.$param")->remove();
                 }
 
                 $inputs[$param] = $value;
+                $this->validatedInputs[$param] = $value;
             }
 
             // 5. hash : uniquement une fois la valeur validée
@@ -189,24 +190,6 @@ class Validator
         $instance->validatedInputs = $inputs;
 
         return $instance;
-    }
-
-    public static function addError(string $parameter, string $message): void
-    {
-        static::$errors[$parameter][] = $message;
-    }
-
-    /**
-     * @param  string|null $parameter  Filtre sur un paramètre précis (optionnel)
-     * @return array  ['param' => ['message', ...], ...]
-     */
-    public static function errors(?string $parameter = null): array
-    {
-        if ($parameter !== null) {
-            return static::$errors[$parameter] ?? [];
-        }
-
-        return static::$errors;
     }
 
     public static function hasErrors(): bool
