@@ -199,7 +199,7 @@ class FileValidator extends Rule
      * @param mixed $value
      * @return bool
      */
-    private function isValidFile(mixed $value): bool
+    protected function isValidFile(mixed $value): bool
     {
         if (is_null($value) || $value === '') {
             return false;
@@ -239,7 +239,7 @@ class FileValidator extends Rule
      * @param mixed $value
      * @return array<string, mixed>
      */
-    private function normalizeFile(mixed $value): array
+    protected function normalizeFile(mixed $value): array
     {
         // Standard PHP $_FILES array
         if (is_array($value) && isset($value['name'], $value['size'], $value['tmp_name'])) {
@@ -268,7 +268,7 @@ class FileValidator extends Rule
      * @param string ...$methods
      * @return mixed
      */
-    private function getObjectProperty(object $object, string $property, string ...$methods): mixed
+    protected function getObjectProperty(object $object, string $property, string ...$methods): mixed
     {
         foreach ($methods as $method) {
             if (method_exists($object, $method)) {
@@ -289,7 +289,7 @@ class FileValidator extends Rule
      * @param array<string, mixed> $file
      * @return bool
      */
-    private function validateUploadError(array $file): bool
+    protected function validateUploadError(array $file): bool
     {
         $error = $file['error'] ?? UPLOAD_ERR_OK;
 
@@ -308,7 +308,7 @@ class FileValidator extends Rule
      * @param int $error
      * @return string
      */
-    private function getUploadErrorMessage(int $error): string
+    protected function getUploadErrorMessage(int $error): string
     {
         return match ($error) {
             UPLOAD_ERR_INI_SIZE => "The uploaded file exceeds the maximum size limit allowed by the server.",
@@ -328,7 +328,7 @@ class FileValidator extends Rule
      * @param array<string, mixed> $file
      * @return bool
      */
-    private function validateSize(array $file): bool
+    protected function validateSize(array $file): bool
     {
         $size = $file['size'] ?? 0;
 
@@ -355,7 +355,7 @@ class FileValidator extends Rule
      * @param array<string, mixed> $file
      * @return bool
      */
-    private function validateExtension(array $file): bool
+    protected function validateExtension(array $file): bool
     {
         $extensions = $this->options['ext'] ?? null;
 
@@ -379,7 +379,7 @@ class FileValidator extends Rule
      * @param array<string, mixed> $file
      * @return bool
      */
-    private function validateMime(array $file): bool
+    protected function validateMime(array $file): bool
     {
         $mimes = $this->options['mime'] ?? null;
 
@@ -403,7 +403,7 @@ class FileValidator extends Rule
      * @param array<string, mixed> $file
      * @return bool
      */
-    private function validateDimensions(array $file): bool
+    protected function validateDimensions(array $file): bool
     {
         $mimeType = (string) ($file['type'] ?? '');
         if (!str_starts_with($mimeType, 'image/')) {
@@ -462,7 +462,7 @@ class FileValidator extends Rule
      * @param array<string, mixed> $file
      * @return bool
      */
-    private function validateFilename(array $file): bool
+    protected function validateFilename(array $file): bool
     {
         $pattern = $this->options['filename'] ?? null;
 
@@ -486,7 +486,7 @@ class FileValidator extends Rule
      * @param int $bytes
      * @return string
      */
-    private function formatSize(int $bytes): string
+    protected function formatSize(int $bytes): string
     {
         if ($bytes >= 1073741824) {
             return number_format($bytes / 1073741824, 2) . ' GB';

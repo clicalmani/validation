@@ -14,17 +14,17 @@ class Validator
 {
     const ERROR_WARNING = 0;
     const ERROR_SILENCE = 1;
-    const ERROR_THROW = 2;
+    const ERROR_THROW   = 2;
 
-    private static ?int $error_level = null;
-    private static array $passed = [];
-    private static array $errors = [];
+    private ?int $errorLevel = null;
+    private static array $passed    = [];
+    private static array $errors    = [];
 
     private array $validatedInputs = [];
 
     public function __construct(int $error_level = self::ERROR_THROW)
     {
-        static::$error_level = $error_level;
+        $this->errorLevel = $error_level;
     }
 
     /**
@@ -45,14 +45,20 @@ class Validator
         foreach ($patterns as $param => $pattern) {
             
             if (in_array($param, static::$passed) || NULL === $rule = $this->getRule($pattern, $param)) continue;
-            
+
             // 1. Paramètre absent
             if (!array_key_exists($param, $inputs)) {
                 if ($rule->isRequired()) {
                     if ($rule->isSometimes()) {
                         $inputs[$param] = null;
+                        $this->validatedInputs[$param] = null;
                     } else {
-                        $rule->log(sprintf("Parameter %s is required for %s validation rule, while using %s validation pattern.", $param, self::getArgument($pattern), $pattern));
+                        $this->log(
+                            $param,
+                            $rule->message() ??
+                            sprintf("Parameter %s is required for %s validation rule, while using %s validation pattern.", $param, self::getArgument($pattern), $pattern),
+                            $rule
+                        );
                         $valid = false;
                     }
                 }
@@ -76,7 +82,12 @@ class Validator
                 $confirmed_param = $param . '_confirmation';
 
                 if (!array_key_exists($confirmed_param, $inputs) || $value !== $inputs[$confirmed_param]) {
-                    $rule->log(sprintf("The %s confirmation does not match.", $param));
+                    $this->log(
+                        $param,
+                        $rule->message() ??
+                        sprintf("The %s confirmation does not match.", $param),
+                        $rule
+                    );
                     $valid = false;
                     continue;
                 }
@@ -90,7 +101,12 @@ class Validator
                 if (!$rule->validate($value)) {
                     // La règle a normalement déjà enregistré son message : pas de doublon.
                     if (empty(static::$errors[$param])) {
-                        $rule->log(sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $rule->getArgument(), json_encode($value)));
+                        $this->log(
+                            $param,
+                            $rule->message() ??
+                            sprintf("Parameter %s is not valid; expected a valid value for %s validation rule, got %s", $param, $rule->getArgument(), json_encode($value)),
+                            $rule
+                        );
                     }
                     $valid = false;
                     continue;
@@ -107,7 +123,9 @@ class Validator
 
             // 5. hash : uniquement une fois la valeur validée
             if ($rule->isHash() && is_string($inputs[$param])) {
-                $inputs[$param] = password(trim($inputs[$param]));
+                $hash = password(trim($inputs[$param]));
+                $inputs[$param] = $hash;
+                $this->validatedInputs[$param] = $hash;
             }
         }
 
@@ -215,17 +233,22 @@ class Validator
         return $this->validatedInputs ?? [];
     }
 
+    public function errors(): array
+    {
+        return static::$errors;
+    }
+
     public static function setErrorLevel(int $error_level = self::ERROR_THROW) : void
     {
-        static::$error_level = $error_level;
+        $this->errorLevel = $error_level;
     }
 
     public static function getErrorLevel() : int
     {
-        return static::$error_level ?? self::ERROR_THROW;
+        return $this->errorLevel ?? self::ERROR_THROW;
     }
 
-    public static function passed(string $parameter) : void
+    public function passed(string $parameter) : void
     {
         static::$passed[] = $parameter;
     }
@@ -234,6 +257,12 @@ class Validator
     {
         static::$passed = [];
         static::$errors = [];
-        static::$error_level = null;
+        $this->errorLevel = null;
+    }
+
+    private function log(string $parameter, string $message, Rule $rule): void
+    {
+        static::$errors[$parameter] = $message;
+        $rule->log($message);
     }
 }

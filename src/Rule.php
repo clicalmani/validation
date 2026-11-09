@@ -20,7 +20,7 @@ class Rule extends InputParser implements RuleInterface
 
     protected static string $argument = '';
 
-    const DEFAULT_ARGUMENTS = ['required', 'nullable', 'sometimes', 'hash', 'confirmed'];
+    const DEFAULT_ARGUMENTS = ['required', 'nullable', 'sometimes', 'hash', 'confirm'];
 
     public function __construct(protected ?string $parameter = null, protected string $pattern = '')
     {
@@ -56,7 +56,7 @@ class Rule extends InputParser implements RuleInterface
     public function isNullable() : bool   { return $this->hasArgument('nullable'); }
     public function isSometimes() : bool  { return $this->hasArgument('sometimes'); }
     public function isHash() : bool       { return $this->hasArgument('hash'); }
-    public function isConfirmed() : bool  { return $this->hasArgument('confirmed'); }
+    public function isConfirmed() : bool  { return $this->hasArgument('confirm'); }
 
     protected function hasArgument(string $argument) : bool
     {
@@ -143,15 +143,15 @@ class Rule extends InputParser implements RuleInterface
 
     public function log(?string $message = null) : void
     {
-        $errors = json_decode(session()->get('errors', '{}'), true);
-        
-        if ($request = Request::current() AND $errorBag = $request->getHeaderLine('X-Inertia-Error-Bag')) {
-            $errors[$errorBag][$this->parameter] = $message;
-        } else $errors[$this->parameter] = $message;
-        
-        session()->set('errors', json_encode($errors));
-        
         if (Request::current()?->hasHeader('X-Inertia')) {
+            $errors = json_decode(session()->get('errors', '{}'), true);
+        
+            if ($request = Request::current() AND $errorBag = $request->getHeaderLine('X-Inertia-Error-Bag')) {
+                $errors[$errorBag][$this->parameter] = $message;
+            } else $errors[$this->parameter] = $message;
+            
+            session()->set('errors', json_encode($errors));
+
             return;
         }
 

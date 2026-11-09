@@ -46,7 +46,7 @@ class ImageValidator extends FileValidator
      *
      * @var array<string, array<int, string>>
      */
-    private const MAP = [
+    protected const MAP = [
         'image/aces' => ['exr'],
         'image/apng' => ['apng', 'png'],
         'image/astc' => ['astc'],
@@ -331,9 +331,9 @@ class ImageValidator extends FileValidator
         }
 
         // 4. Validate extension against allowed format mappings
-        $extension = $uploadedFile->getClientOriginalExtension();
+        $extension = $uploadedFile->getClientExtension();
 
-        if (!$this->validateExtension($extension)) {
+        if (!$this->validateImageExtension($extension)) {
             return false;
         }
 
@@ -365,7 +365,7 @@ class ImageValidator extends FileValidator
         ];
 
         // 7. Validate image dimensions against set constraints
-        if (!$this->validateDimensions($width, $height)) {
+        if (!$this->validateImageDimensions($width, $height)) {
             return false;
         }
 
@@ -386,28 +386,12 @@ class ImageValidator extends FileValidator
      * @param string $extension
      * @return bool
      */
-    private function validateExtension(string $extension): bool
+    protected function validateImageExtension(string $extension): bool
     {
         $allowedExtensions = array_unique(array_merge(...array_values(self::MAP)));
 
         if (!in_array(strtolower($extension), $allowedExtensions, true)) {
             $this->addError("The extension '{$extension}' is not permitted for images.");
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Checks if the supplied MIME type exists within internal mappings.
-     *
-     * @param string $mimeType
-     * @return bool
-     */
-    private function validateMimeType(string $mimeType): bool
-    {
-        if (!isset(self::MAP[$mimeType])) {
-            $this->addError("The MIME type '{$mimeType}' is not supported.");
             return false;
         }
 
@@ -421,7 +405,7 @@ class ImageValidator extends FileValidator
      * @param int $height
      * @return bool
      */
-    private function validateDimensions(int $width, int $height): bool
+    protected function validateImageDimensions(int $width, int $height): bool
     {
         // Width check
         if ($minWidth = $this->options['minWidth'] ?? null) {
@@ -457,13 +441,29 @@ class ImageValidator extends FileValidator
     }
 
     /**
+     * Checks if the supplied MIME type exists within internal mappings.
+     *
+     * @param string $mimeType
+     * @return bool
+     */
+    protected function validateMimeType(string $mimeType): bool
+    {
+        if (!isset(self::MAP[$mimeType])) {
+            $this->addError("The MIME type '{$mimeType}' is not supported.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Validates aspect ratio rules for exact match, minimum, or maximum thresholds.
      *
      * @param int $width
      * @param int $height
      * @return bool
      */
-    private function validateRatio(int $width, int $height): bool
+    protected function validateRatio(int $width, int $height): bool
     {
         if ($height === 0) {
             $this->addError("Invalid image dimensions (height is 0).");
@@ -516,15 +516,15 @@ class ImageValidator extends FileValidator
     public function message(): ?string
     {
         $customMessage = $this->options['message'] ?? null;
-
+        
         if ($customMessage) {
             return str_replace(
                 ['{max}', '{min}', '{width}', '{height}'],
                 [
                     $this->formatSize($this->options['max'] ?? 0),
                     $this->formatSize($this->options['min'] ?? 0),
-                    $this->imageInfo['width'] ?? '?',
-                    $this->imageInfo['height'] ?? '?'
+                    $this->imageInfo['width'] ?? (isset($this->options['minWidth']) ? $this->options['minWidth'] . 'px' : '?'),
+                    $this->imageInfo['height'] ?? (isset($this->options['minHeight']) ? $this->options['minHeight'] . 'px' : '?')
                 ],
                 $customMessage
             );
